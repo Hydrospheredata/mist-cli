@@ -65,9 +65,9 @@ class Context(NamedConfig, PrettyRow):
             max_jobs=None,
             downtime=None,
             spark_conf=None,
-            worker_mode=None,
-            run_options=None,
-            precreated=None,
+            worker_mode='shared',
+            run_options='',
+            precreated=False,
             streaming_duration=None
     ):
         super(Context, self).__init__(name)
@@ -100,8 +100,12 @@ class Endpoint(NamedConfig, PrettyRow):
 
     def __init__(self, name, class_name=None, context=None, path=None):
         super(Endpoint, self).__init__(name)
+
+        if isinstance(context, str):
+            context = Context(context)
         if context is None:
             context = Context('default')
+
         self.default_context = context
         self.class_name = class_name
         self.path = path
