@@ -1,3 +1,4 @@
+import json
 import os
 from functools import update_wrapper
 
@@ -304,17 +305,36 @@ def start():
     pass
 
 
+class LookAheadIterator:
+    def __init__(self, items):
+        self._iter = iter(items)
+        self._n = len(items)
+
+    def next(self):
+        if self._n < 0:  raise StopIteration
+        self._n -= 1
+        return self._iter.next()
+
+    def __iter__(self):
+        return self._iter
+
+    def has_next(self):
+        return self._n >= 0
+
+
 @start.command('job',
-               help='Start job by given job id',
+               help='Start job',
                short_help='start job <endpoint> <json request>')
-@click.argument('request', required=True, type=(str, str, str))
+@click.argument('endpoint', required=True, nargs=1)
+@click.argument('request', required=False, nargs=1)
+@click.option('--pretty', is_flag=True)
 @pass_mist_app
-def start_job(ctx, mist_app, request):
-    raise NotImplementedError
-    # endpoint, req,  = request
-    # click.echo('Starting job {}'.format(endpoint))
-    # job_id = mist_app.start_job(endpoint, params, req)
-    # table = Texttable(ctx.max_content_width)
-    # table.header(['Job started', 'JOB ID'])
-    # table.add_row(['', job_id])
-    # click.echo(table.draw())
+def start_job(ctx, mist_app, endpoint, request, pretty):
+    kw = dict()
+    if pretty:
+        kw['indent'] = 2
+        kw['sort_keys'] = True
+
+    click.echo(
+        json.dumps(mist_app.start_job(endpoint, request), **kw)
+    )

@@ -1,3 +1,4 @@
+import json
 import os
 from unittest import TestCase
 import unittest
@@ -245,6 +246,10 @@ class MistAppTest(TestCase):
         self.assertEqual(res.name, 'test-ctx')
         self.assertEqual(res.worker_mode, 'shared')
 
-    @unittest.skip('not implemented yet')
     def test_start_job(self, m):
-        pass
+        json_str = '{"errors": [], "payload": {"result": [1, 2, 3]}, "success": true}'
+        m.register_uri('POST', self.MIST_APP_URL + 'endpoints/simple/jobs',
+                       text=json_str)
+        mist = MistApp()
+        res = mist.start_job('simple', '{"numbers": [1,2,3], "multiplier": 4}')
+        self.assertEqual(res, json.loads(json_str))

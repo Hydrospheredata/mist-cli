@@ -154,9 +154,19 @@ class CliTest(TestCase):
         self.assertEqual(dev, 'foo')
         self.assertEqual(version, '0.0.1')
 
-    @unittest.skip('not implemented yet')
     def test_mist_cli_start_job(self):
-        pass
+        mist_app = app.MistApp()
+        mist_app.start_job = MagicMock(return_value=dict(errors=[], payload={'result': [1, 2, 3]}, success=True))
+        res = self.runner.invoke(cli.start_job, args=('simple',), obj=mist_app)
+        self.assertEqual(res.exit_code, 0)
+        self.assertEqual(res.output, '{"errors": [], "payload": {"result": [1, 2, 3]}, "success": true}\n')
+        endpoint = mist_app.start_job.call_args[0][0]
+        self.assertEqual(endpoint, 'simple')
+        mist_app.start_job.reset_mock()
+        res = self.runner.invoke(cli.start_job, args=('--pretty', 'simple',), obj=mist_app)
+        self.assertEqual(res.exit_code, 0)
+        self.assertEqual(res.output, '{\n  "errors": [], \n  "payload": {\n    "result": [\n      1, \n      2, '
+                                     '\n      3\n    ]\n  }, \n  "success": true\n}\n')
 
     def test_mist_cli_kill_job_w_manual_accepting(self):
         mist_app = app.MistApp()

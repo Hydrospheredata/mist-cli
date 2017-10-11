@@ -1,3 +1,4 @@
+import json
 import os
 from collections import defaultdict
 
@@ -204,11 +205,12 @@ class MistApp(object):
         with requests.delete(url) as resp:
             resp.raise_for_status()
 
-    def start_job(self, endpoint, params, request):
-        url = 'http://{}:{}/v2/api/endpoints/{}/jobs'.format(self.host, self.port, quote(endpoint, safe=''))
-        with requests.post(url, params=params, json=request) as resp:
+    def start_job(self, endpoint, request):
+        url = 'http://{}:{}/v2/api/endpoints/{}/jobs?force=true'.format(self.host, self.port, quote(endpoint, safe=''))
+        req = json.loads(request)
+        with requests.post(url, json=req) as resp:
             resp.raise_for_status()
-            return resp.json()['id']
+            return resp.json()
 
     def __format_job_name(self, version, dev=''):
         filename = os.path.basename(self.job_path)
