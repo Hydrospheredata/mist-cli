@@ -78,16 +78,25 @@ class FileExistsException(Exception):
 
 
 class MistApp(object):
-    def __init__(self):
-        self.host = None
-        self.port = None
-        self.job_path = None
-        self.config_path = None
-        self.accept_all = None
-        self.format_table = None
+    def __init__(
+            self,
+            host='localhost',
+            port=2004,
+            job_path=None,
+            config_path=None,
+            accept_all=False,
+            format_table=False
+    ):
+        self.host = host
+        self.port = port
+        self.job_path = job_path
+        self.config_path = config_path
+        self.accept_all = accept_all
+        self.format_table = format_table
+        self.endpoint_parser = EndpointParser()
+        self.context_parser = ContextParser()
 
-    @staticmethod
-    def parse_config(file_path):
+    def parse_config(self, file_path):
         """
         :param file_path:
 
@@ -95,19 +104,17 @@ class MistApp(object):
         :rtype: (list of Endpoint, list of Context)
         """
         config = ConfigFactory.parse_file(file_path)
-        ep = EndpointParser()
-        cp = ContextParser()
         endpoints = []
         errors = []
         contexts = defaultdict(lambda: Context('default'))
         for k, v in config.get_config('mist.contexts').iteritems():
             try:
-                contexts[k] = cp.parse(k, v)
+                contexts[k] = self.context_parser.parse(k, v)
             except Exception as e:
                 errors.append(e)
         for k, v in config.get_config('mist.endpoints').iteritems():
             try:
-                endpoint = ep.parse(k, v)
+                endpoint = self.endpoint_parser.parse(k, v)
                 endpoint.default_context = contexts.get(endpoint.default_context.name, endpoint.default_context)
                 endpoints.append(endpoint)
             except Exception as e:
@@ -239,4 +246,4 @@ class MistApp(object):
                 errors.append(('Endpoint ' + e.name, err))
         if len(errors) != 0:
             raise DeployFailedException(errors)
-        return updated_ctx, deployed_endpoints
+        return deployed_endpoints, updated_ctx

@@ -25,7 +25,7 @@ class GroupWithGroupSubCommand(click.Group):
             if cmd is None:
                 continue
             if isinstance(cmd, click.Group):
-                rows += map(lambda t: (group.name + ' ' + cmd.name + t[0], t[1]), self.get_commands_to_format(cmd))
+                rows += map(lambda t: (group.name + ' ' + t[0], t[1]), self.get_commands_to_format(cmd))
             else:
                 help = cmd.short_help or ''
                 rows.append((group.name + ' ' + cmd.name, help))
@@ -184,7 +184,7 @@ def mist_cli(ctx, mist_app, host, port, yes, format_table):
 def deploy(ctx, mist_app, job_version, job_path, config_path):
     mist_app.job_path = job_path
     mist_app.config_path = config_path
-    contexts, endpoints = _deploy(mist_app, job_version, False)
+    endpoints, contexts = _deploy(mist_app, job_version, False)
     contexts = map(Context.to_row, contexts)
     endpoints = map(Endpoint.to_row, endpoints)
     click.echo('Deployed contexts')
@@ -223,7 +223,7 @@ def deploy(ctx, mist_app, job_version, job_path, config_path):
 def dev_deploy(ctx, mist_app, user, job_version, job_path, config_path):
     mist_app.job_path = job_path
     mist_app.config_path = config_path
-    contexts, endpoints = _deploy(mist_app, job_version, True, user)
+    endpoints, contexts = _deploy(mist_app, job_version, True, user)
     contexts = map(Context.to_row, contexts)
     endpoints = map(Endpoint.to_row, endpoints)
     click.echo('Deployed contexts')

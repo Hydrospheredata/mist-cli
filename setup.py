@@ -8,6 +8,9 @@ setup(
     install_requires=[
         'Click', 'pyhocon', 'requests', 'texttable'
     ],
+    tests_require=[
+        'pytest', 'requests-mock', 'mock>=2.0.0'
+    ],
     test_suite='tests',
     entry_points='''
         [console_scripts]
