@@ -12,7 +12,7 @@ pip install .
 
 Instantly run script every time when bash starts that is generate content of `mist-cli-complete.sh`.
 ```bash
-echo 'eval "$(_FOO_BAR_COMPLETE=source foo-bar)"' >> ~/.bash_profile
+echo 'eval "$(_MIST_CLI_COMPLETE=source mist-cli)"' >> ~/.bash_profile
 ```
 
 Or you can just add `mist-cli-complete.sh` somewhere in the system and execute it when it needed.
