@@ -161,7 +161,7 @@ def mist_cli(ctx, mist_app, host, port, yes, format_table):
     """
     mist_app.host = host
     mist_app.port = port
-    mist_app.yes = yes
+    mist_app.accept_all = yes
     mist_app.format_table = format_table
 
 
