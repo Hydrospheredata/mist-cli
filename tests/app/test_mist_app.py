@@ -7,8 +7,8 @@ from mock import MagicMock
 from pyhocon.exceptions import ConfigException
 from requests.exceptions import HTTPError
 
-from app import models
-from app.app import MistApp, BadConfigException, DeployFailedException
+from mist import models
+from mist.app import MistApp, BadConfigException, DeployFailedException
 
 
 @requests_mock.Mocker()
@@ -119,6 +119,7 @@ class MistAppTest(TestCase):
         m.register_uri('GET', self.MIST_APP_URL + 'contexts',
                        text='[{"name": "foo", "workerMode": "shared"}]')
         res = mist.contexts()
+        print(res)
         self.assertEqual(len(res), 1)
         item = res[0]
         self.assertEqual(item.name, 'foo')

@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name='mist-cli',
     version='0.0.1',
-    packages=find_packages(),
+    packages=['mist'],
     include_package_data=True,
     install_requires=[
         'Click', 'pyhocon', 'requests', 'texttable'
@@ -14,6 +14,6 @@ setup(
     test_suite='tests',
     entry_points='''
         [console_scripts]
-        mist-cli=app.cli:mist_cli
+        mist-cli=mist.cli:mist_cli
     ''',
 )

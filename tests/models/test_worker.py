@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from app import models
+from mist import models
 
 
 class WorkerTest(TestCase):

@@ -6,7 +6,7 @@ from click import testing
 from mock import MagicMock
 from pyhocon import ConfigFactory
 
-from app import cli, app, models
+from mist import cli, app, models
 
 
 class CliTest(TestCase):
@@ -162,11 +162,6 @@ class CliTest(TestCase):
         self.assertEqual(res.output, '{"errors": [], "payload": {"result": [1, 2, 3]}, "success": true}\n')
         endpoint = mist_app.start_job.call_args[0][0]
         self.assertEqual(endpoint, 'simple')
-        mist_app.start_job.reset_mock()
-        res = self.runner.invoke(cli.start_job, args=('--pretty', 'simple',), obj=mist_app)
-        self.assertEqual(res.exit_code, 0)
-        self.assertEqual(res.output, '{\n  "errors": [], \n  "payload": {\n    "result": [\n      1, \n      2, '
-                                     '\n      3\n    ]\n  }, \n  "success": true\n}\n')
 
     def test_mist_cli_kill_job_w_manual_accepting(self):
         mist_app = app.MistApp()

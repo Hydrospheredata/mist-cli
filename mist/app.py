@@ -6,7 +6,7 @@ import requests
 from pyhocon import ConfigFactory, ConfigTree
 from requests.exceptions import HTTPError
 
-from models import Endpoint, Context, Worker, Job
+from mist.models import Endpoint, Context, Worker, Job
 
 try:
     from urllib.parse import quote
@@ -46,7 +46,8 @@ class ContextParser(NamedConfigParser):
         def parse_spark_config(value, key_prefix):
             if isinstance(value, ConfigTree):
                 res = dict()
-                for k, v in value.iteritems():
+                for k in value.keys():
+                    v = value[k]
                     new_key = k if key_prefix == '' else key_prefix + '.' + k
                     res.update(parse_spark_config(v, new_key))
                 return res
@@ -108,13 +109,17 @@ class MistApp(object):
         endpoints = []
         errors = []
         contexts = defaultdict(lambda: Context('default'))
-        for k, v in config.get_config('mist.contexts').iteritems():
+        contexts_cfg = config.get_config('mist.contexts')
+        for k in contexts_cfg.keys():
             try:
+                v = contexts_cfg[k]
                 contexts[k] = self.context_parser.parse(k, v)
             except Exception as e:
                 errors.append(e)
-        for k, v in config.get_config('mist.endpoints').iteritems():
+        endpoints_cfg = config.get_config('mist.endpoints')
+        for k in endpoints_cfg.keys():
             try:
+                v = endpoints_cfg[k]
                 endpoint = self.endpoint_parser.parse(k, v)
                 endpoint.default_context = contexts.get(endpoint.default_context.name, endpoint.default_context)
                 endpoints.append(endpoint)
@@ -177,23 +182,23 @@ class MistApp(object):
     def workers(self):
         url = 'http://{}:{}/v2/api/workers'.format(self.host, self.port)
         with requests.get(url) as resp:
-            return map(Worker.from_json, resp.json())
+            return list(map(Worker.from_json, resp.json()))
 
     def endpoints(self):
         url = 'http://{}:{}/v2/api/endpoints'.format(self.host, self.port)
         with requests.get(url) as resp:
-            return map(Endpoint.from_json, resp.json())
+            return list(map(Endpoint.from_json, resp.json()))
 
     def jobs(self, status_filter):
-        filters = map(lambda s: s.strip(), status_filter.split(','))
+        filters = list(map(lambda s: s.strip(), status_filter.split(',')))
         url = 'http://{}:{}/v2/api/jobs'.format(self.host, self.port)
         with requests.get(url, params={'status': filters}) as resp:
-            return map(Job.from_json, resp.json())
+            return list(map(Job.from_json, resp.json()))
 
     def contexts(self):
         url = 'http://{}:{}/v2/api/contexts'.format(self.host, self.port)
         with requests.get(url) as resp:
-            return map(Context.from_json, resp.json())
+            return list(map(Context.from_json, resp.json()))
 
     def cancel_job(self, job_id):
         url = 'http://{}:{}/v2/api/jobs/{}'.format(self.host, self.port, quote(job_id, safe=''))
@@ -234,7 +239,7 @@ class MistApp(object):
             except HTTPError as err:
                 errors.append(('Context ' + c.name, err))
 
-        updated_ctx_name = map(lambda c: c.name, updated_ctx)
+        updated_ctx_name = list(map(lambda c: c.name, updated_ctx))
 
         def updated_ctx_or_default(endpoint):
             return endpoint.default_context.name in updated_ctx_name or endpoint.default_context.name == 'default'

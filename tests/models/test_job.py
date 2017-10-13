@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import datetime
 
-from app import models
+from mist import models
 
 
 class JobTest(TestCase):

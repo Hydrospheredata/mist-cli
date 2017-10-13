@@ -6,8 +6,8 @@ import click
 from click.globals import get_current_context
 from texttable import Texttable
 
-import app
-from models import Worker, Job, Endpoint, Context
+from mist import app
+from mist.models import Worker, Job, Endpoint, Context
 
 CONTEXT_SETTINGS = dict(auto_envvar_prefix='MIST')
 
@@ -26,7 +26,7 @@ class GroupWithGroupSubCommand(click.Group):
             if cmd is None:
                 continue
             if isinstance(cmd, click.Group):
-                rows += map(lambda t: (group.name + ' ' + t[0], t[1]), self.get_commands_to_format(cmd))
+                rows += list(map(lambda t: (group.name + ' ' + t[0], t[1]), self.get_commands_to_format(cmd)))
             else:
                 help = cmd.short_help or ''
                 rows.append((group.name + ' ' + cmd.name, help))
@@ -107,8 +107,9 @@ def _deploy(mist_app, job_version=None, dev=False, user=None):
 
 
 def draw_table(ctx, mist_app, items, header):
-    table = Texttable(ctx.max_content_width)
-    table.set_cols_align(map(lambda _: 'l', header))
+    items = list(items)
+    table = Texttable()
+    table.set_cols_align(list(map(lambda _: 'l', header)))
     table.set_deco(0)
     if mist_app.format_table:
         table.set_deco(Texttable.BORDER | Texttable.HEADER | Texttable.HLINES | Texttable.VLINES)
@@ -126,7 +127,7 @@ __list_choices = {
 
 def list_items(ctx, mist_app, item_type, *args):
     items = __list_choices.get(item_type, lambda _: [])
-    rows = map(item_type.to_row, items(mist_app, *args))
+    rows = list(map(item_type.to_row, items(mist_app, *args)))
     header = item_type.header
     draw_table(ctx, mist_app, rows, header)
 
@@ -258,7 +259,7 @@ def kill_job(ctx, mist_app, job_id):
     mist_app.cancel_job(job_id)
 
     click.echo('Killed job {}'.format(job_id))
-    table = Texttable(ctx.max_content_width)
+    table = Texttable()
     table.header(['Job cancelled', 'JOB ID'])
     table.set_deco(0)
     if mist_app.format_table:
@@ -303,23 +304,6 @@ def list_contexts(ctx, mist_app):
 @mist_cli.group('start')
 def start():
     pass
-
-
-class LookAheadIterator:
-    def __init__(self, items):
-        self._iter = iter(items)
-        self._n = len(items)
-
-    def next(self):
-        if self._n < 0:  raise StopIteration
-        self._n -= 1
-        return self._iter.next()
-
-    def __iter__(self):
-        return self._iter
-
-    def has_next(self):
-        return self._n >= 0
 
 
 @start.command('job',

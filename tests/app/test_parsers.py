@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from pyhocon import ConfigFactory
 
-from app import app, models
+from mist import app, models
 
 
 class NamedConfigParsers(TestCase):
