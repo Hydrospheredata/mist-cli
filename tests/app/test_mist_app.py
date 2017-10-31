@@ -156,7 +156,7 @@ class MistAppTest(TestCase):
         self.assertEqual(endpoint.default_context.name, 'baz_foo_0_0_1')
         self.assertEqual(endpoint.path, 'test-path_0_0_1.py')
         self.assertEqual(context.name, 'baz_foo_0_0_1')
-        inst.upload_job.assert_called_with('baz_test-path_0_0_1.py')
+        inst.upload_job.assert_called_with('test-path_baz_0_0_1.py')
 
     def test_deploy(self, m):
         test_context = models.Context('foo')

@@ -4,10 +4,12 @@ from functools import update_wrapper
 
 import click
 from click.globals import get_current_context
+from pyhocon import ConfigFactory
 from texttable import Texttable
+import hashlib
 
 from mist import app
-from mist.models import Worker, Job, Endpoint, Context
+from mist.models import Worker, Job, Endpoint, Context, Deployment
 
 CONTEXT_SETTINGS = dict(auto_envvar_prefix='MIST')
 
@@ -322,3 +324,157 @@ def start_job(ctx, mist_app, endpoint, request, pretty):
     click.echo(
         json.dumps(mist_app.start_job(endpoint, request), **kw)
     )
+
+
+@mist_cli.command('create')
+@pass_mist_app
+@click.option('-f', '--file', type=click.Path(exists=True, dir_okay=False))
+def create(ctx, mist_app, file):
+    deployment = mist_app.parse_deployment(file)
+    try:
+        deployments = validate_deployments_and_unlink_refs(mist_app, (int(os.path.basename(file)[:2]), deployment,))
+        for _, deployment in deployments:
+            mist_app.update(deployment)
+    except RuntimeError as e:
+        click.UsageError(e)
+
+
+def resolve_ext(job_type):
+    ext = '.jar'
+    if job_type == 'python':
+        ext = '.py'
+    return ext
+
+
+def validate_artifact(mist_app, file_path, artifact_name=None):
+    if artifact_name is None:
+        artifact_name = os.path.basename(file_path)
+
+    if not os.path.exists(file_path):
+        raise RuntimeError("job deployment should exists by path {}".format(file_path))
+
+    should_be_updated = False
+    uploaded_job_sha = mist_app.get_sha1(artifact_name)
+    if uploaded_job_sha is not None:
+        calculated_sha = app.calculate_sha1(file_path)
+        if calculated_sha != uploaded_job_sha:
+            raise RuntimeError('Artifact {} content is differ with remote version, please specify different '
+                               'version of artifact: path {}'.format(artifact_name, file_path))
+        else:
+            click.echo('Artifact {} already exists'.format(artifact_name))
+    else:
+        click.echo('Artifact {} is valid and will be updated'.format(artifact_name))
+        should_be_updated = True
+
+    return should_be_updated
+
+
+def validate_deployments_and_unlink_refs(mist_app, *deployments):
+    """
+    :type mist_app: mist.app.MistApp
+    :param mist_app:
+    :type deployments: (int, Deployment)
+    :param deployments:
+    :return:
+    """
+    res = []
+
+    context_names = [d[1].get_name() for d in deployments if d[1].model_type == 'Context']
+    artifact_names = [d[1].get_name() for d in deployments if d[1].model_type == 'Artifact']
+
+    for priority, deployment in deployments:
+        if deployment.model_type == 'Artifact':
+            job_path = deployment.data['file-path']
+            artifact_name = deployment.get_name()
+            if validate_artifact(mist_app, job_path, artifact_name):
+                res.append((priority, deployment))
+
+        elif deployment.model_type == 'Context':
+            # context = mist_app.get_context(deployment.name, deployment.version)
+            # if context is not None:
+            #     click.echo("Found context by name {} and version {}. Validating..".format(deployment.name, deployment.version))
+            click.echo('Context {} validated'.format(deployment.get_name()))
+            res.append((priority, deployment))
+        elif deployment.model_type == 'Endpoint':
+            parts = deployment.data['context'].split(':')
+            ctx_name = '_'.join(map(lambda part: part.replace('.', '_'), parts))
+            remote_ctx = mist_app.get_context(ctx_name)
+            if ctx_name not in context_names and remote_ctx is None:
+                raise RuntimeError("Context not exists by name {}".format(ctx_name))
+            deployment.data['context'] = ctx_name
+
+            job_link = deployment.data['path']
+            parts = job_link.split(':')
+            if len(parts) > 1:
+                job_type, job_name, job_ver = parts[0], parts[1], parts[2]
+                ext = resolve_ext(job_type)
+                artifact_name = '{}_{}{}'.format(job_name, job_ver.replace('.', '_'), ext)
+                artifact_applied = artifact_name in artifact_names
+                artifact_exists_remotely = mist_app.get_sha1(artifact_name) is not None
+                if not artifact_applied and not artifact_exists_remotely:
+                    raise RuntimeError('Artifact not found by link {}'.format(job_link))
+                click.echo('Endpoint {} path {}'.format(deployment.get_name(), artifact_name))
+                deployment.data['path'] = artifact_name
+            else:
+                if validate_artifact(mist_app, job_link):
+                    res.append((-1000, Deployment(
+                        os.path.basename(job_link),
+                        'Artifact',
+                        ConfigFactory.from_dict(dict(filePath=job_link))
+                    )))
+
+            res.append((priority, deployment))
+        else:
+            continue
+    return res
+
+
+def process_dir(mist_app, folder):
+    click.echo('processing {}'.format(folder))
+    things_to_update = []
+    for f in os.listdir(folder):
+        if f.endswith('.conf'):
+            priority = int(f[0: 2])
+            deployment = mist_app.parse_deployment(os.path.join(folder, f))
+            things_to_update.append((priority, deployment))
+    try:
+        # for consistency:
+        # 1) job exists by path;
+        # 2) uploaded job version match repository one (validate sha)
+        # 3) context exists by label or present in deployments to update
+        # 4) update with same version but different contents
+        deployments = validate_deployments_and_unlink_refs(mist_app, *things_to_update)
+        deployments = list(sorted(deployments, key=lambda t: t[0]))
+        for _, deployment in deployments:
+            mist_app.update(deployment)
+    except Exception as e:
+        raise click.UsageError(e.message)
+
+
+@mist_cli.command('apply')
+@pass_mist_app
+@click.option('-f', '--folder', type=click.Path(exists=True, file_okay=False))
+def apply(ctx, mist_app, folder):
+    dirs = []
+    with_files = False
+    for f in os.listdir(folder):
+        path = os.path.join(folder, f)
+        if os.path.isfile(path):
+            with_files = True
+        else:
+            dirs.append(path)
+
+    with_dirs = len(dirs) != 0
+
+    if with_dirs and with_files:
+        raise click.UsageError('contains directories and files should only contain dirs with configuration or '
+                               'directory with files', ctx)
+
+    if not with_dirs and not with_files:
+        raise click.UsageError('{} should not be empty'.format(folder), ctx)
+
+    if with_files:
+        dirs.append(folder)
+
+    for d in dirs:
+        process_dir(mist_app, d)

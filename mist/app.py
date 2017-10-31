@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 from collections import defaultdict
@@ -6,7 +7,7 @@ import requests
 from pyhocon import ConfigFactory, ConfigTree
 from requests.exceptions import HTTPError
 
-from mist.models import Endpoint, Context, Worker, Job
+from mist.models import Endpoint, Context, Worker, Job, Deployment, Artifact
 
 try:
     from urllib.parse import quote
@@ -29,7 +30,10 @@ class EndpointParser(NamedConfigParser):
         :return:
         """
         return Endpoint(
-            name, cfg.get_string('class-name'), Context(cfg.get_string('context', 'default'))
+            name,
+            cfg.get_string('class-name'),
+            Context(cfg.get_string('context', 'default')),
+            cfg.get_string('path', None)
         )
 
 
@@ -64,6 +68,14 @@ class ContextParser(NamedConfigParser):
         )
 
 
+class ArtifactParser(NamedConfigParser):
+    def parse(self, name, cfg):
+        return Artifact(
+            name,
+            cfg.get_string('file-path')
+        )
+
+
 class BadConfigException(Exception):
     def __init__(self, errors):
         self.errors = errors
@@ -77,6 +89,23 @@ class DeployFailedException(Exception):
 class FileExistsException(Exception):
     def __init__(self, filename):
         self.filename = filename
+
+
+def calculate_sha1(file_path):
+    sha1sum = hashlib.sha1()
+    with open(file_path, 'rb') as source:
+        block = source.read(2 ** 16)
+        while len(block) != 0:
+            sha1sum.update(block)
+            block = source.read(2 ** 16)
+    return sha1sum.hexdigest()
+
+
+def add_suffixes(file_path, *suffixes):
+    filename = os.path.basename(file_path)
+    filename, ext = os.path.splitext(filename)
+    parts = list(map(lambda suffix: suffix.replace('.', '_'), suffixes))
+    return filename + '_' + '_'.join(parts) + ext
 
 
 class MistApp(object):
@@ -97,6 +126,54 @@ class MistApp(object):
         self.format_table = format_table
         self.endpoint_parser = EndpointParser()
         self.context_parser = ContextParser()
+        self.artifact_parser = ArtifactParser()
+
+    @staticmethod
+    def parse_deployment(deployment_conf):
+        cfg = ConfigFactory.parse_file(deployment_conf)
+        model_type = cfg.get_string('model')
+        name = cfg.get_string('name', os.path.basename(os.path.dirname(deployment_conf)))
+        return Deployment(
+            name,
+            model_type,
+            cfg.get_config('data', ConfigTree()),
+            cfg['version']
+        )
+
+    def __resolve_parser_and_update_fn(self, model_type):
+        """
+        :param model_type:
+        :raise RuntimeError
+        :return:
+        :rtype NamedConfigParser
+        """
+        if model_type == 'Artifact':
+            parser = self.artifact_parser
+            update_fn = self.__upload_artifact
+        elif model_type == 'Endpoint':
+            parser = self.endpoint_parser
+            update_fn = self.deploy_endpoint
+        elif model_type == 'Context':
+            parser = self.context_parser
+            update_fn = self.deploy_context
+        else:
+            raise RuntimeError('unknown model type')
+        return parser, update_fn
+
+    def update(self, deployment):
+        """
+        :type deployment: Deployment
+        :param deployment:
+        :return: updated item
+        :rtype:
+        """
+        model_type = deployment.model_type
+        print("updating {}".format(model_type))
+        parser, update_fn = self.__resolve_parser_and_update_fn(model_type)
+
+        item = parser.parse(deployment.name, deployment.data)
+        item.with_version(deployment.version)
+        return update_fn(item)
 
     def parse_config(self, file_path):
         """
@@ -132,17 +209,23 @@ class MistApp(object):
         return endpoints, contexts.values()
 
     def upload_job(self, filename=None):
-        with open(self.job_path, 'rb') as job:
-            if filename is None:
-                filename = os.path.basename(self.job_path)
+        if filename is None:
+            filename, _ = os.path.splitext(os.path.basename(self.job_path))
+        return self.__upload_artifact(Artifact(filename, self.job_path)).file_path
+
+    def __upload_artifact(self, artifact):
+        with open(artifact.file_path, 'rb') as job:
+            _, ext = os.path.splitext(artifact.file_path)
             url = 'http://{}:{}/v2/api/artifacts'.format(self.host, self.port)
-            files = {'file': (filename, job)}
+            artifact_filename = artifact.name + ext
+            print(artifact_filename)
+            files = {'file': (artifact_filename, job)}
             with requests.post(url, files=files) as resp:
                 if resp.status_code == 409:
-                    raise FileExistsException(filename)
+                    raise FileExistsException(artifact_filename)
                 resp.raise_for_status()
                 job_path = resp.text
-                return job_path
+                return Artifact(artifact.name, job_path)
 
     def deploy(self, endpoints, contexts, job_version=''):
         uploaded_file_path = self.upload_job(self.__format_job_name(job_version))
@@ -217,16 +300,26 @@ class MistApp(object):
             resp.raise_for_status()
             return resp.json()
 
+    def get_sha1(self, artifact_name):
+        url = 'http://{}:{}/v2/api/artifacts/{}/sha'.format(self.host, self.port, quote(artifact_name))
+        with requests.get(url) as resp:
+            if resp.status_code == 200:
+                return resp.text
+            return None
+
+    def get_context(self, context_name):
+        url = 'http://{}:{}/v2/api/contexts/{}'.format(self.host, self.port, quote(context_name))
+        with requests.get(url) as resp:
+            if resp.status_code == 200:
+                return Context.from_json(resp.json())
+            return None
+
     def __format_job_name(self, version, dev=''):
-        filename = os.path.basename(self.job_path)
-        filename, ext = os.path.splitext(filename)
-        parts = []
+        args = []
         if dev != '':
-            parts.append(dev)
-        parts.append(filename)
-        if version != '':
-            parts.append(version.replace('.', '_'))
-        return '_'.join(parts) + ext
+            args.append(dev)
+        args.append(version)
+        return add_suffixes(self.job_path, *args)
 
     def __deploy(self, endpoints, contexts):
         errors = []

@@ -1,4 +1,5 @@
 import datetime
+import os
 from abc import ABCMeta, abstractmethod
 
 
@@ -6,6 +7,7 @@ def snake_to_camel_case(param_name):
     pn = param_name.split('_')
     first, rest = pn[0], pn[1:]
     return first + ''.join(word.capitalize() for word in rest)
+
 
 
 class PrettyRow(object):
@@ -199,3 +201,45 @@ class Worker(JsonConfig, PrettyRow):
         return Worker(
             data['name'], data['address'], data.get('sparkUi', '')
         )
+
+
+class Artifact(NamedConfig):
+    @staticmethod
+    def from_json(data):
+        raise NotImplementedError
+
+    def __init__(self, name, file_path):
+        super(Artifact, self).__init__(name)
+        self.file_path = file_path
+
+
+class Deployment(object):
+    def __init__(self, name, model_type, data, version=None):
+        """
+        :type name: str
+        :param name:
+        :type model_type: str
+        :param model_type:
+        :type data: pyhocon.config_tree.ConfigTree
+        :param data:
+        :param version:
+        """
+        self.name = name
+        self.model_type = model_type
+        self.data = data
+        self.version = version
+
+    def get_name(self):
+        name = self.name
+
+        if self.version is not None:
+            name += '_' + self.version.replace('.', '_')
+
+        if self.model_type == 'Artifact':
+            _, ext = os.path.splitext(self.data['file-path'])
+            name += ext
+
+        return name
+
+    def __str__(self):
+        return 'Deployment({}, {}, {}, {})'.format(self.name, self.model_type, self.data, self.version)

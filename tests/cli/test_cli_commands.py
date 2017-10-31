@@ -37,7 +37,7 @@ class CliTest(TestCase):
         os.remove(self.config_path)
 
     def test_mist_cli_commands(self):
-        self.assertEqual(len(cli.mist_cli.get_commands_to_format(cli.mist_cli)), 9)
+        self.assertEqual(len(cli.mist_cli.get_commands_to_format(cli.mist_cli)), 11)
 
     def test_mist_cli_list_subcommands(self):
         mist_app = app.MistApp()
