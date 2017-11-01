@@ -314,6 +314,13 @@ class MistApp(object):
                 return Context.from_json(resp.json())
             return None
 
+    def get_endpoint(self, endpoint_name):
+        url = 'http://{}:{}/v2/api/endpoints/{}'.format(self.host, self.port, quote(endpoint_name))
+        with requests.get(url) as resp:
+            if resp.status_code == 200:
+                return Endpoint.from_json(resp.json())
+            return None
+
     def __format_job_name(self, version, dev=''):
         args = []
         if dev != '':

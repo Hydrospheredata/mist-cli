@@ -346,6 +346,9 @@ def resolve_ext(job_type):
     return ext
 
 
+__allowed_extensions = ['.jar', '.py']
+
+
 def validate_artifact(mist_app, file_path, artifact_name=None):
     if artifact_name is None:
         artifact_name = os.path.basename(file_path)
@@ -378,9 +381,8 @@ def validate_deployments_and_unlink_refs(mist_app, *deployments):
     :return:
     """
     res = []
-
-    context_names = [d[1].get_name() for d in deployments if d[1].model_type == 'Context']
-    artifact_names = [d[1].get_name() for d in deployments if d[1].model_type == 'Artifact']
+    context_names = dict((d[1].name, d[1]) for d in deployments if d[1].model_type == 'Context')
+    artifact_names = dict((d[1].name, d[1]) for d in deployments if d[1].model_type == 'Artifact')
 
     for priority, deployment in deployments:
         if deployment.model_type == 'Artifact':
@@ -390,39 +392,45 @@ def validate_deployments_and_unlink_refs(mist_app, *deployments):
                 res.append((priority, deployment))
 
         elif deployment.model_type == 'Context':
-            # context = mist_app.get_context(deployment.name, deployment.version)
-            # if context is not None:
-            #     click.echo("Found context by name {} and version {}. Validating..".format(deployment.name, deployment.version))
+            context = mist_app.get_context(deployment.get_name())
+            if context is not None:
+                raise RuntimeError(
+                    'Found context by name {} and version {}. Aborting'.format(deployment.name, deployment.version))
+
             click.echo('Context {} validated'.format(deployment.get_name()))
             res.append((priority, deployment))
         elif deployment.model_type == 'Endpoint':
-            parts = deployment.data['context'].split(':')
-            ctx_name = '_'.join(map(lambda part: part.replace('.', '_'), parts))
+            remote_ep = mist_app.get_endpoint(deployment.get_name())
+            if remote_ep is not None:
+                raise RuntimeError(
+                    "Endpoint {} with version {} exists remotely. Aborting".format(deployment.name, deployment.version))
+
+            ctx_name = deployment.data['context']
             remote_ctx = mist_app.get_context(ctx_name)
             if ctx_name not in context_names and remote_ctx is None:
                 raise RuntimeError("Context not exists by name {}".format(ctx_name))
-            deployment.data['context'] = ctx_name
 
+            deployment.data['context'] = context_names[ctx_name].get_name()
             job_link = deployment.data['path']
-            parts = job_link.split(':')
-            if len(parts) > 1:
-                job_type, job_name, job_ver = parts[0], parts[1], parts[2]
-                ext = resolve_ext(job_type)
-                artifact_name = '{}_{}{}'.format(job_name, job_ver.replace('.', '_'), ext)
-                artifact_applied = artifact_name in artifact_names
-                artifact_exists_remotely = mist_app.get_sha1(artifact_name) is not None
-                if not artifact_applied and not artifact_exists_remotely:
-                    raise RuntimeError('Artifact not found by link {}'.format(job_link))
-                click.echo('Endpoint {} path {}'.format(deployment.get_name(), artifact_name))
-                deployment.data['path'] = artifact_name
-            else:
-                if validate_artifact(mist_app, job_link):
+            _, ext = os.path.splitext(job_link)
+
+            if ext == '' and job_link not in artifact_names:
+                raise RuntimeError('Artifact not found by link {}'.format(job_link))
+
+            if ext == '':
+                artifact_name = artifact_names[job_link].get_name()
+            else:  # job_link is considered to be job_path
+                filename = os.path.basename(job_link)
+                if validate_artifact(mist_app, job_link, filename):
                     res.append((-1000, Deployment(
                         os.path.basename(job_link),
                         'Artifact',
                         ConfigFactory.from_dict(dict(filePath=job_link))
                     )))
+                    artifact_name = filename
 
+            click.echo('Endpoint {} path {}'.format(deployment.get_name(), artifact_name))
+            deployment.data['path'] = artifact_name
             res.append((priority, deployment))
         else:
             continue
