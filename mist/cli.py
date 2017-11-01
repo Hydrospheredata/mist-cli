@@ -467,8 +467,7 @@ def apply(ctx, mist_app, folder):
     with_dirs = len(dirs) != 0
 
     if with_dirs and with_files:
-        raise click.UsageError('contains directories and files should only contain dirs with configuration or '
-                               'directory with files', ctx)
+        raise click.UsageError('folder {} must contain only directories or only files'.format(folder), ctx)
 
     if not with_dirs and not with_files:
         raise click.UsageError('{} should not be empty'.format(folder), ctx)
