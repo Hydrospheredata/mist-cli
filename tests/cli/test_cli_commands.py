@@ -1,3 +1,4 @@
+import json
 import os
 import unittest
 from unittest import TestCase
@@ -159,7 +160,9 @@ class CliTest(TestCase):
         mist_app.start_job = MagicMock(return_value=dict(errors=[], payload={'result': [1, 2, 3]}, success=True))
         res = self.runner.invoke(cli.start_job, args=('simple',), obj=mist_app)
         self.assertEqual(res.exit_code, 0)
-        self.assertEqual(res.output, '{"errors": [], "payload": {"result": [1, 2, 3]}, "success": true}\n')
+        returned_json = json.loads(res.output)
+        expected_json = json.loads('{"errors": [], "payload": {"result": [1, 2, 3]}, "success": true}\n')
+        self.assertEqual(returned_json, expected_json)
         endpoint = mist_app.start_job.call_args[0][0]
         self.assertEqual(endpoint, 'simple')
 
