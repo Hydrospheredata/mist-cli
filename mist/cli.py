@@ -392,18 +392,23 @@ def validate_deployments_and_unlink_refs(mist_app, *deployments):
                 res.append((priority, deployment))
 
         elif deployment.model_type == 'Context':
-            context = mist_app.get_context(deployment.get_name())
-            if context is not None:
-                raise RuntimeError(
-                    'Found context by name {} and version {}. Aborting'.format(deployment.name, deployment.version))
+            if mist_app.validate:
+                click.echo('Validating context {}'.format(deployment.get_name()))
+                context = mist_app.get_context(deployment.get_name())
+                if context is not None:
+                    raise RuntimeError(
+                        'Found context by name {} and version {}. Aborting'.format(deployment.name, deployment.version))
 
             click.echo('Context {} validated'.format(deployment.get_name()))
             res.append((priority, deployment))
         elif deployment.model_type == 'Endpoint':
-            remote_ep = mist_app.get_endpoint(deployment.get_name())
-            if remote_ep is not None:
-                raise RuntimeError(
-                    "Endpoint {} with version {} exists remotely. Aborting".format(deployment.name, deployment.version))
+            if mist_app.validate:
+                click.echo('Validating endpoint {}'.format(deployment.get_name()))
+
+                remote_ep = mist_app.get_endpoint(deployment.get_name())
+                if remote_ep is not None:
+                    raise RuntimeError(
+                        "Endpoint {} with version {} exists remotely. Aborting".format(deployment.name, deployment.version))
 
             ctx_name = deployment.data['context']
             remote_ctx = mist_app.get_context(ctx_name)
@@ -462,7 +467,9 @@ def process_dir(mist_app, folder):
 @mist_cli.command('apply')
 @pass_mist_app
 @click.option('-f', '--folder', type=click.Path(exists=True, file_okay=False))
-def apply(ctx, mist_app, folder):
+@click.option('--validate', type=bool, default=True)
+def apply(ctx, mist_app, folder, validate):
+    mist_app.validate = validate
     dirs = []
     with_files = False
     for f in os.listdir(folder):

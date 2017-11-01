@@ -116,7 +116,8 @@ class MistApp(object):
             job_path=None,
             config_path=None,
             accept_all=False,
-            format_table=False
+            format_table=False,
+            validate=True
     ):
         self.host = host
         self.port = port
@@ -127,6 +128,7 @@ class MistApp(object):
         self.endpoint_parser = EndpointParser()
         self.context_parser = ContextParser()
         self.artifact_parser = ArtifactParser()
+        self.validate = validate
 
     @staticmethod
     def parse_deployment(deployment_conf):
