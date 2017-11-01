@@ -8,6 +8,9 @@ python:
   - "3.5"
 install:
   - pip install .
+  - pip install codecov
+  - pip install coverage
 # command to run tests
 script:
-  - python setup.py test
+  - coverage run --source mist setup.py test
+  - codecov -t b4c9ca2b-f8b1-4cfb-8a04-5bc9a71df22f
