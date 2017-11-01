@@ -339,13 +339,6 @@ def create(ctx, mist_app, file):
         click.UsageError(e)
 
 
-def resolve_ext(job_type):
-    ext = '.jar'
-    if job_type == 'python':
-        ext = '.py'
-    return ext
-
-
 __allowed_extensions = ['.jar', '.py']
 
 
@@ -404,7 +397,6 @@ def validate_deployments_and_unlink_refs(mist_app, *deployments):
         elif deployment.model_type == 'Endpoint':
             if mist_app.validate:
                 click.echo('Validating endpoint {}'.format(deployment.get_name()))
-
                 remote_ep = mist_app.get_endpoint(deployment.get_name())
                 if remote_ep is not None:
                     raise RuntimeError(
