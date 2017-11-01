@@ -1,5 +1,6 @@
 # Mist CLI
-
+[![Build Status](https://travis-ci.org/Hydrospheredata/mist-cli.svg?branch=master)](https://travis-ci.org/Hydrospheredata/mist-cli)
+[![codecov](https://codecov.io/gh/Hydrospheredata/mist-cli/branch/master/graph/badge.svg)](https://codecov.io/gh/Hydrospheredata/mist-cli)
 CLI interface for mist server for creating and updating endpoint and context configuration.
 
 ## Installation

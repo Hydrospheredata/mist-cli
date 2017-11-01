@@ -6,7 +6,6 @@ import click
 from click.globals import get_current_context
 from pyhocon import ConfigFactory
 from texttable import Texttable
-import hashlib
 
 from mist import app
 from mist.models import Worker, Job, Endpoint, Context, Deployment
@@ -328,18 +327,18 @@ def start_job(ctx, mist_app, endpoint, request, pretty):
 
 @mist_cli.command('create')
 @pass_mist_app
-@click.option('-f', '--file', type=click.Path(exists=True, dir_okay=False))
+@click.option('-f', '--file',
+              help="path to file with configuration of some deployment stage",
+              required=True,
+              type=click.Path(exists=True, dir_okay=False))
 def create(ctx, mist_app, file):
     deployment = mist_app.parse_deployment(file)
     try:
         deployments = validate_deployments_and_unlink_refs(mist_app, (int(os.path.basename(file)[:2]), deployment,))
         for _, deployment in deployments:
             mist_app.update(deployment)
-    except RuntimeError as e:
-        click.UsageError(e)
-
-
-__allowed_extensions = ['.jar', '.py']
+    except Exception as e:
+        click.UsageError(str(e))
 
 
 def validate_artifact(mist_app, file_path, artifact_name=None):
@@ -389,8 +388,9 @@ def validate_deployments_and_unlink_refs(mist_app, *deployments):
                 click.echo('Validating context {}'.format(deployment.get_name()))
                 context = mist_app.get_context(deployment.get_name())
                 if context is not None:
-                    raise RuntimeError(
-                        'Found context by name {} and version {}. Aborting'.format(deployment.name, deployment.version))
+                    raise RuntimeError('Found context by name {} and version {}. Aborting'.format(
+                        deployment.name, deployment.version
+                    ))
 
             click.echo('Context {} validated'.format(deployment.get_name()))
             res.append((priority, deployment))
@@ -399,8 +399,9 @@ def validate_deployments_and_unlink_refs(mist_app, *deployments):
                 click.echo('Validating endpoint {}'.format(deployment.get_name()))
                 remote_ep = mist_app.get_endpoint(deployment.get_name())
                 if remote_ep is not None:
-                    raise RuntimeError(
-                        "Endpoint {} with version {} exists remotely. Aborting".format(deployment.name, deployment.version))
+                    raise RuntimeError("Endpoint {} with version {} exists remotely. Aborting".format(
+                        deployment.name, deployment.version
+                    ))
 
             ctx_name = deployment.data['context']
             remote_ctx = mist_app.get_context(ctx_name)
@@ -453,12 +454,17 @@ def process_dir(mist_app, folder):
         for _, deployment in deployments:
             mist_app.update(deployment)
     except Exception as e:
-        raise click.UsageError(e.message)
+        raise click.UsageError(str(e))
 
 
 @mist_cli.command('apply')
 @pass_mist_app
-@click.option('-f', '--folder', type=click.Path(exists=True, file_okay=False))
+@click.option('-f', '--folder',
+              help="""
+              Folder either containing directories with configuration or 
+              folder with configuration of deployment stages
+              """,
+              required=True, type=click.Path(exists=True, file_okay=False))
 @click.option('--validate', type=bool, default=True)
 def apply(ctx, mist_app, folder, validate):
     mist_app.validate = validate
