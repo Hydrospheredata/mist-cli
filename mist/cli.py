@@ -493,7 +493,8 @@ def print_examples(mist_app, deployment):
             click.echo('Start job via mist-cli')
             click.echo('-' * 80)
             request = generate_request(endpoint_json)
-            click.echo("mist-cli start job {endpoint} '{request}'\n".format(endpoint=endpoint_name, request=request))
+            click.echo("mist-cli --host {host} --port {port} start job {endpoint} '{request}'\n".format(
+                endpoint=endpoint_name, request=request, host=mist_app.host, port=mist_app.port))
 
             click.echo('Start job via curl')
             click.echo('-' * 80)
