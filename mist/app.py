@@ -356,3 +356,10 @@ class MistApp(object):
         if len(errors) != 0:
             raise DeployFailedException(errors)
         return deployed_endpoints, updated_ctx
+
+    def get_full_endpoint(self, endpoint_name):
+        url = 'http://{}:{}/v2/api/endpoints/{}'.format(self.host, self.port, quote(endpoint_name))
+        with requests.get(url) as resp:
+            if resp.status_code == 200:
+                return resp.json()
+            return None

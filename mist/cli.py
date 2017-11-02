@@ -1,5 +1,7 @@
 import json
+import math
 import os
+import random
 from functools import update_wrapper
 
 import click
@@ -435,6 +437,65 @@ def validate_deployments_and_unlink_refs(mist_app, *deployments):
     return res
 
 
+def generate_request(endpoint_json):
+    """
+    :param endpoint_json:
+    :return:
+    """
+    generated_obj = {}
+    execute_instance = endpoint_json.get('execute', dict())
+    for key in execute_instance.keys():
+        generated_obj[key] = generate_value(execute_instance[key])
+
+    return json.dumps(generated_obj)
+
+
+def generate_value(param_type):
+    t = param_type['type']
+    args = param_type['args']
+
+    if t == 'MString':
+        return 'string'
+    if t == 'MAny':
+        return {}
+    if t == 'MMap':
+        return {
+            generate_value(args[0]): generate_value(args[1])
+        }
+    if t == 'MInt':
+        return math.ceil(random.random() * 10)
+    if t == 'MDouble':
+        return random.random()
+    if t == 'MList':
+        return [generate_value(args[0])]
+    if t == 'MOption':
+        return generate_value(args[0])
+
+
+def print_examples(mist_app, deployment):
+    """
+    :type mist_app: mist.app.MistApp
+    :param mist_app:
+    :type deployment: Deployment
+    :param deployment:
+    :return:
+    """
+    url = 'http://{}:{}/v2/api'.format(mist_app.host, mist_app.port)
+    if deployment.model_type == 'Endpoint':
+        click.echo('Get info of endpoint resource\n')
+        endpoint_name = deployment.get_name()
+        click.echo("curl  -H 'Content-Type: application/json' -X GET {url}/endpoints/{name}\n".format(url=url, name=endpoint_name))
+        endpoint_json = mist_app.get_full_endpoint(endpoint_name)
+        if endpoint_json is not None:
+            click.echo('Start job via mist-cli\n')
+            request = generate_request(endpoint_json)
+            click.echo("mist-cli start job {endpoint} '{request}'\n".format(endpoint=endpoint_name, request=request))
+            click.echo('Start job via curl\n')
+            curl_cmd = "curl --data '{request}' -H 'Content-Type: application/json' -X POST {url}/endpoints/{" \
+                       "name}/jobs?force=true"
+            click.echo(curl_cmd.format(request=request, url=url, name=endpoint_name))
+
+
 def process_dir(mist_app, folder):
     click.echo('processing {}'.format(folder))
     things_to_update = []
@@ -453,6 +514,11 @@ def process_dir(mist_app, folder):
         deployments = list(sorted(deployments, key=lambda t: t[0]))
         for _, deployment in deployments:
             mist_app.update(deployment)
+        click.echo('\n')
+        click.echo('Example commands')
+        click.echo('-' * 80)
+        for _, deployment in deployments:
+            print_examples(mist_app, deployment)
     except Exception as e:
         raise click.UsageError(str(e))
 
