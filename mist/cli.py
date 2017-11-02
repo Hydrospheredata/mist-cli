@@ -482,18 +482,38 @@ def print_examples(mist_app, deployment):
     """
     url = 'http://{}:{}/v2/api'.format(mist_app.host, mist_app.port)
     if deployment.model_type == 'Endpoint':
-        click.echo('Get info of endpoint resource\n')
+        click.echo('Get info of endpoint resource')
+        click.echo('-' * 80)
         endpoint_name = deployment.get_name()
-        click.echo("curl  -H 'Content-Type: application/json' -X GET {url}/endpoints/{name}\n".format(url=url, name=endpoint_name))
+        click.echo("curl  -H 'Content-Type: application/json' -X GET {url}/endpoints/{name}\n".format(
+            url=url, name=endpoint_name
+        ))
         endpoint_json = mist_app.get_full_endpoint(endpoint_name)
         if endpoint_json is not None:
-            click.echo('Start job via mist-cli\n')
+            click.echo('Start job via mist-cli')
+            click.echo('-' * 80)
             request = generate_request(endpoint_json)
             click.echo("mist-cli start job {endpoint} '{request}'\n".format(endpoint=endpoint_name, request=request))
-            click.echo('Start job via curl\n')
+
+            click.echo('Start job via curl')
+            click.echo('-' * 80)
             curl_cmd = "curl --data '{request}' -H 'Content-Type: application/json' -X POST {url}/endpoints/{" \
                        "name}/jobs?force=true"
+
             click.echo(curl_cmd.format(request=request, url=url, name=endpoint_name))
+    elif deployment.model_type == 'Artifact':
+        click.echo('Get artifact file')
+        click.echo('-' * 80)
+        click.echo("curl -H 'Content-Type: application/json' -X POST {url}/artifacts/{name}".format(
+          url=url, name=deployment.get_name()
+        ))
+    elif deployment.model_type == 'Context':
+        click.echo('Get context info')
+        click.echo('-' * 80)
+        click.echo("curl -H 'Content-Type: application/json' -X POST {url}/contexts/{name}".format(
+            url=url, name=deployment.get_name()
+        ))
+    click.echo('\n')
 
 
 def process_dir(mist_app, folder):
