@@ -9,6 +9,18 @@ from mock import MagicMock
 from pyhocon import ConfigFactory, ConfigTree
 
 from mist import cli, app, models
+import sys
+
+
+def make_dirs(directory, exist_ok=False):
+    major_ver = sys.version_info[0]
+    if major_ver == 2:
+        if exist_ok and not os.path.exists(directory):
+            os.makedirs(directory)
+        elif not exist_ok:
+            raise IOError('directory {} exists'.format(directory))
+    else:
+        os.makedirs(directory, exist_ok=exist_ok)
 
 
 class CliTest(TestCase):
@@ -34,7 +46,7 @@ class CliTest(TestCase):
 
         self.test_apply_folder = os.path.abspath('../../example/simple-context')
         self.test_apply_invalid_folder1 = dir_path
-        os.makedirs(os.path.join(dir_path, 'test'), exist_ok=True)
+        make_dirs(os.path.join(dir_path, 'test'), exist_ok=True)
         self.apply_job_path = self.setup_job(dir_path)
         self.config_path = conf_path
 
@@ -317,8 +329,8 @@ class CliTest(TestCase):
         self.assertEqual(0, res.exit_code)
 
 
-    # def test_mist_cli_apply_existing_configs_without_validation(self):
-    #     pass
-    #
-    # def test_mist_cli_apply_existing_configs_with_validation(self):
-    #     pass
+        # def test_mist_cli_apply_existing_configs_without_validation(self):
+        #     pass
+        #
+        # def test_mist_cli_apply_existing_configs_with_validation(self):
+        #     pass
