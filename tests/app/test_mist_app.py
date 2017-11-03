@@ -4,6 +4,7 @@ from unittest import TestCase
 import unittest
 import requests_mock
 from mock import MagicMock
+from pyhocon import ConfigTree
 from pyhocon.exceptions import ConfigException
 from requests.exceptions import HTTPError
 
@@ -17,6 +18,25 @@ class MistAppTest(TestCase):
 
     def setUp(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
+        apply_config = os.path.join(dir_path, '00test_apply.conf')
+        with open(apply_config, 'w+') as f:
+            f.write("""
+            model = Artifact
+            name = test-artifact
+            version = 0.0.1
+            data.file-path = "test-path.py"
+            """)
+        self.apply_artifact_config = apply_config
+
+        apply_config2 = os.path.join(dir_path, '00test_apply2.conf')
+        with open(apply_config2, 'w+') as f:
+            f.write("""
+            model = Artifact
+            version = 0.0.1
+            data.file-path = "test-path.py"
+            """)
+        self.apply_artifact_config2 = apply_config2
+
         file_path = os.path.join(dir_path, 'test_config.conf')
         with open(file_path, 'w+') as f:
             f.write("""
@@ -57,6 +77,8 @@ class MistAppTest(TestCase):
     def tearDown(self):
         os.remove(self.test_config_path)
         os.remove(self.test_job_path)
+        os.remove(self.apply_artifact_config)
+        os.remove(self.apply_artifact_config2)
 
     def test_mist_app_creation(self, m):
         mist = MistApp()
@@ -254,3 +276,126 @@ class MistAppTest(TestCase):
         mist = MistApp()
         res = mist.start_job('simple', '{"numbers": [1,2,3], "multiplier": 4}')
         self.assertEqual(res, json.loads(json_str))
+
+    def test_get_endpoint(self, m):
+        m.register_uri('GET', self.MIST_APP_URL + 'endpoints/simple', text="""
+        {
+            "name": "simple",
+            "className": "Test",
+            "path": "test-path.py",
+            "defaultContext": "foo"
+        }
+        """)
+
+        mist = MistApp()
+        res = mist.get_endpoint('simple')
+        self.assertIsInstance(res, models.Endpoint)
+        self.assertEqual(res.name, 'simple')
+        self.assertEqual(res.class_name, 'Test')
+        self.assertEqual(res.path, 'test-path.py')
+        self.assertEqual(res.default_context.name, 'foo')
+
+    def test_get_full_endpoint(self, m):
+        m.register_uri('GET', self.MIST_APP_URL + 'endpoints/simple', text="""
+            {
+              "name": "simple",
+              "execute": {
+                "numbers": {
+                  "type": "MList",
+                  "args": [
+                    {
+                      "type": "MInt",
+                      "args": []
+                    }
+                  ]
+                },
+                "multiplier": {
+                  "type": "MOption",
+                  "args": [
+                    {
+                      "type": "MInt",
+                      "args": []
+                    }
+                  ]
+                }
+              },
+              "path": "my-awesome-job_0_0_1.jar",
+              "tags": [],
+              "className": "SimpleContext$",
+              "defaultContext": "simple",
+              "lang": "scala"
+            }
+        """)
+        mist = MistApp()
+        res = mist.get_full_endpoint('simple')
+        self.assertIsInstance(res, dict)
+        self.assertIn('execute', res)
+
+    def test_get_context(self, m):
+        m.register_uri('GET', self.MIST_APP_URL + 'contexts/simple', text="""
+        {
+          "name": "simple",
+          "maxJobs": 20,
+          "workerMode": "shared",
+          "precreated": false,
+          "sparkConf": {
+            "spark.executor.memory": "256m",
+            "spark.driver.memory": "512m"
+          },
+          "runOptions": "",
+          "downtime": "Inf",
+          "streamingDuration": "1s"
+        }
+        """)
+
+        mist = MistApp()
+        res = mist.get_context('simple')
+        self.assertIsInstance(res, models.Context)
+        self.assertEqual(res.name, 'simple')
+
+    def test_get_sha1(self, m):
+        m.register_uri('GET', self.MIST_APP_URL + 'artifacts/my-artifact.py/sha', text="SOME_CONTENT")
+        m.register_uri('GET', self.MIST_APP_URL + 'artifacts/unknown/sha', status_code=404)
+        mist = MistApp()
+        sha1 = mist.get_sha1('my-artifact.py')
+        self.assertIsNotNone(sha1)
+        res = mist.get_sha1('unknown')
+        self.assertIsNone(res)
+
+    def test_parse_deployment_w_name_defined(self, m):
+        mist = MistApp()
+        res = mist.parse_deployment(self.apply_artifact_config)
+        self.assertIsInstance(res, models.Deployment)
+        self.assertEqual(res.name, 'test-artifact')
+        self.assertEqual(res.version, '0.0.1')
+        self.assertEqual(res.model_type, 'Artifact')
+
+    def test_parse_deployment_wo_name(self, m):
+        mist = MistApp()
+        res = mist.parse_deployment(self.apply_artifact_config2)
+        self.assertIsInstance(res, models.Deployment)
+        self.assertEqual(res.name, 'app')
+        self.assertEqual(res.version, '0.0.1')
+        self.assertEqual(res.model_type, 'Artifact')
+
+    def test_update_deployment(self, m):
+        mist = MistApp()
+        artifact = models.Artifact('test-artifact.py', 'test-artifact.py')
+        context = models.Context('test-context')
+        endpoint = models.Endpoint('test-endpoint', 'Test', 'test-context', 'test-path.py')
+        mist.artifact_parser.parse = MagicMock(return_value=artifact)
+        mist.context_parser.parse = MagicMock(return_value=context)
+        mist.endpoint_parser.parse = MagicMock(return_value=endpoint)
+        mist._MistApp__upload_artifact = MagicMock(return_value=artifact)
+        mist.deploy_context = MagicMock(return_value=context)
+        mist.deploy_endpoint = MagicMock(return_value=endpoint)
+        mist.update(models.Deployment('test-artifact.py', 'Artifact', ConfigTree()))
+        mist.update(models.Deployment('test-context', 'Context', ConfigTree()))
+        mist.update(models.Deployment('test-endpoint', 'Endpoint', ConfigTree(), '0.0.1'))
+        call_artifact = mist._MistApp__upload_artifact.call_args[0][0]
+        call_endpoint = mist.deploy_endpoint.call_args[0][0]
+        call_context = mist.deploy_context.call_args[0][0]
+        self.assertEqual(call_artifact.name, 'test-artifact.py')
+        self.assertEqual(call_context.name, 'test-context')
+        self.assertEqual(call_endpoint.name, 'test-endpoint_0_0_1')
+

@@ -1,11 +1,12 @@
 import json
 import os
+import shutil
 import unittest
 from unittest import TestCase
 
 from click import testing
 from mock import MagicMock
-from pyhocon import ConfigFactory
+from pyhocon import ConfigFactory, ConfigTree
 
 from mist import cli, app, models
 
@@ -31,11 +32,67 @@ class CliTest(TestCase):
             }
             """)
 
+        self.test_apply_folder = os.path.abspath('../../example/simple-context')
+        self.test_apply_invalid_folder1 = dir_path
+        os.makedirs(os.path.join(dir_path, 'test'), exist_ok=True)
+        self.apply_job_path = self.setup_job(dir_path)
         self.config_path = conf_path
+
+    def setup_job(self, dir_path):
+        job_path = os.path.join(dir_path, 'simple-context')
+        os.mkdir(job_path)
+        test_job_path = os.path.abspath(os.path.join(job_path, 'test-job.py'))
+        with open(test_job_path, 'w+') as f:
+            f.write("""
+            from mist.mist_job import MistJob
+
+            class SimpleContext(MistJob):
+
+                def execute(self, numbers, multiplier = 2):
+                    rdd = self.context.parallelize(numbers)
+                    result = rdd.map(lambda s: s * multiplier).collect()
+                    return {"result": result}
+            """)
+        with open(os.path.join(job_path, '00artifact.conf'), 'w+') as f:
+            f.write("""
+            name=test-job
+            model=Artifact
+            version=0.0.1
+            data.file-path={path}
+            """.format(path=test_job_path))
+        with open(os.path.join(job_path, '10context.conf'), 'w+') as f:
+            f.write("""
+            name=foo
+            model=Context
+            version=0.0.1
+            data {
+                worker-mode = shared
+                max-parallel-jobs = 20
+                downtime = Inf
+                precreated = false
+                streaming-duration = 1s
+                spark-conf { }
+                run-options = ""
+            }
+            """)
+        with open(os.path.join(job_path, '20endpoint.conf'), 'w+') as f:
+            f.write("""
+            model = Endpoint
+            name = test-name 
+            version = 0.0.1
+            data {
+                path = test-job
+                class-name = SimpleContext
+                context = foo
+            }
+            """)
+        return job_path
 
     def tearDown(self):
         os.remove(self.job_path)
         os.remove(self.config_path)
+        shutil.rmtree(os.path.join(self.test_apply_invalid_folder1, 'test'))
+        shutil.rmtree(self.apply_job_path)
 
     def test_mist_cli_commands(self):
         self.assertEqual(len(cli.mist_cli.get_commands_to_format(cli.mist_cli)), 11)
@@ -209,3 +266,59 @@ class CliTest(TestCase):
         self.assertEqual(worker_id, 'test-worker-id')
         self.assertIn('Killing worker', res.output)
         self.assertIn('test-worker-id', res.output)
+
+    def test_mist_cli_apply_not_existing_folder(self):
+        mist_app = app.MistApp()
+        res = self.runner.invoke(cli.apply, ('--folder', './test-folder'), obj=mist_app)
+        self.assertEqual(res.exit_code, 2)
+
+    def test_mist_cli_apply_folder_with_folders_and_files(self):
+        mist_app = app.MistApp()
+        res = self.runner.invoke(cli.apply, ('--folder', self.test_apply_invalid_folder1), obj=mist_app)
+        self.assertEqual(res.exit_code, 2)
+
+    def test_mist_cli_apply_new_configs_with_validation(self):
+        mist_app = app.MistApp()
+        mist_app.get_sha1 = MagicMock(return_value=None)
+        # app.calculate_sha1 = MagicMock(return_value='TEST_CONTENT')
+        mist_app.get_context = MagicMock(return_value=None)
+        mist_app.get_endpoint = MagicMock(return_value=None)
+        mist_app.update = MagicMock()
+        mist_app.get_full_endpoint = MagicMock(return_value={
+            'execute': {
+                'test-arg': {
+                    'args': [
+
+                    ],
+                    'type': 'MInt'
+                }
+            }
+        })
+        res = self.runner.invoke(cli.apply, ('--folder', self.apply_job_path), obj=mist_app)
+        self.assertEqual(0, res.exit_code)
+
+    def test_mist_cli_apply_new_configs_without_validation(self):
+        mist_app = app.MistApp()
+        mist_app.get_sha1 = MagicMock(return_value=None)
+        mist_app.get_context = MagicMock(return_value=None)
+        # app.calculate_sha1 = MagicMock(return_value='TEST_CONTENT')
+        mist_app.update = MagicMock()
+        mist_app.get_full_endpoint = MagicMock(return_value={
+            'execute': {
+                'test-arg': {
+                    'args': [
+
+                    ],
+                    'type': 'MInt'
+                }
+            }
+        })
+        res = self.runner.invoke(cli.apply, ('--folder', self.apply_job_path, '--validate', 'false'), obj=mist_app)
+        self.assertEqual(0, res.exit_code)
+
+
+    # def test_mist_cli_apply_existing_configs_without_validation(self):
+    #     pass
+    #
+    # def test_mist_cli_apply_existing_configs_with_validation(self):
+    #     pass

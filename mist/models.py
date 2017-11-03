@@ -44,6 +44,10 @@ class NamedConfig(JsonConfig):
         return self
 
     def with_version(self, version):
+
+        if version is None:
+            return self
+
         version = version.replace('.', '_')
         self.name = '{}_{}'.format(self.name, version)
         return self

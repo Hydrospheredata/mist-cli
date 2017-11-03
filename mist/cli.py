@@ -425,7 +425,7 @@ def validate_deployments_and_unlink_refs(mist_app, *deployments):
                     res.append((-1000, Deployment(
                         os.path.basename(job_link),
                         'Artifact',
-                        ConfigFactory.from_dict(dict(filePath=job_link))
+                        ConfigFactory.from_dict({'file-path':job_link})
                     )))
                     artifact_name = filename
 

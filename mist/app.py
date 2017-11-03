@@ -133,7 +133,7 @@ class MistApp(object):
     @staticmethod
     def parse_deployment(deployment_conf):
         cfg = ConfigFactory.parse_file(deployment_conf)
-        model_type = cfg.get_string('model')
+        model_type = cfg['model']
         name = cfg.get_string('name', os.path.basename(os.path.dirname(deployment_conf)))
         return Deployment(
             name,
