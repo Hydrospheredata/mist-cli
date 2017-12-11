@@ -1,10 +1,10 @@
 import json
-import math
 import os
 import random
 from functools import update_wrapper
-
+import glob
 import click
+import math
 from click.globals import get_current_context
 from pyhocon import ConfigFactory
 from texttable import Texttable
@@ -85,30 +85,6 @@ def validate_version(ctx, param, value):
         raise click.BadParameter('version should be in format x.[y.] or at least one integer')
 
 
-def _deploy(mist_app, job_version=None, dev=False, user=None):
-    mist_cfg = mist_app.config_path
-    try:
-        endpoints, contexts = mist_app.parse_config(mist_cfg)
-        if dev:
-            return mist_app.dev_deploy(endpoints, contexts, user, job_version)
-        else:
-            if not mist_app.accept_all:
-                message = "Are you sure you want to deploy {} endpoints and {} contexts".format(len(endpoints),
-                                                                                                len(contexts))
-                click.confirm(message, abort=True, err=True)
-            return mist_app.deploy(endpoints, contexts, job_version)
-    except app.BadConfigException as e:
-        raise click.UsageError('\n'.join(map(lambda x: x.message, e.errors)))
-    except app.DeployFailedException as ex:
-        error = '\n'.join(map(lambda t: 'Failed to update {} with trace msg: {}'.format(t[0], t[1]), ex.errors))
-        click.echo(error)
-        raise click.Abort
-    except app.FileExistsException as fe:
-        message = """You cannot deploy job with old filename: tried to deploy {}. 
-        Please specify --job-version or change it""".format(fe.filename)
-        raise click.UsageError(message)
-
-
 def draw_table(ctx, mist_app, items, header):
     items = list(items)
     table = Texttable()
@@ -166,75 +142,6 @@ def mist_cli(ctx, mist_app, host, port, yes, format_table):
     mist_app.port = port
     mist_app.accept_all = yes
     mist_app.format_table = format_table
-
-
-@mist_cli.command('deploy', help="""
-    Production deploy of passed config and job
-""")
-@click.option('--job-version',
-              help='Suffix for job name',
-              default='',
-              required=False)
-@click.option('--job-path',
-              type=click.Path(exists=True),
-              required=True,
-              help='Job file path')
-@click.option('--config-path',
-              default='./configs/default.conf',
-              show_default=True,
-              help='Config in HOCON format according to data format of <TODO: link here>',
-              type=click.Path(exists=True),
-              required=False)
-@pass_mist_app
-def deploy(ctx, mist_app, job_version, job_path, config_path):
-    mist_app.job_path = job_path
-    mist_app.config_path = config_path
-    endpoints, contexts = _deploy(mist_app, job_version, False)
-    contexts = map(Context.to_row, contexts)
-    endpoints = map(Endpoint.to_row, endpoints)
-    click.echo('Deployed contexts')
-    draw_table(ctx, mist_app, contexts, Context.header)
-    click.echo('Deployed endpoints')
-    draw_table(ctx, mist_app, endpoints, Endpoint.header)
-
-
-@mist_cli.command('deploy-dev', help="""
-    Development deploy of config and job. User and Job version options will be added to job file name, 
-    contexts and endpoints.
-""")
-@click.option('--user',
-              default=lambda: os.environ.get('USER', ''),
-              help="""
-                  Prefix for context name, endpoint and job name. 
-                  Default value will be gathered from MIST_USER or USER environment variable.
-              """,
-              prompt='Enter user')
-@click.option('--job-version',
-              help='Suffix for context name, endpoint and job name',
-              default='0.0.0',
-              callback=validate_version,
-              prompt='Enter job version')
-@click.option('--job-path',
-              type=click.Path(exists=True),
-              required=True,
-              help='Job file path')
-@click.option('--config-path',
-              default='./configs/default.conf',
-              show_default=True,
-              help='Config in HOCON format according to data format of <TODO: link here>',
-              type=click.Path(exists=True),
-              required=False)
-@pass_mist_app
-def dev_deploy(ctx, mist_app, user, job_version, job_path, config_path):
-    mist_app.job_path = job_path
-    mist_app.config_path = config_path
-    endpoints, contexts = _deploy(mist_app, job_version, True, user)
-    contexts = map(Context.to_row, contexts)
-    endpoints = map(Endpoint.to_row, endpoints)
-    click.echo('Deployed contexts')
-    draw_table(ctx, mist_app, contexts, Context.header)
-    click.echo('Deployed endpoints')
-    draw_table(ctx, mist_app, endpoints, Endpoint.header)
 
 
 @mist_cli.group('kill')
@@ -327,22 +234,6 @@ def start_job(ctx, mist_app, endpoint, request, pretty):
     )
 
 
-@mist_cli.command('create')
-@pass_mist_app
-@click.option('-f', '--file',
-              help="path to file with configuration of some deployment stage",
-              required=True,
-              type=click.Path(exists=True, dir_okay=False))
-def create(ctx, mist_app, file):
-    deployment = mist_app.parse_deployment(file)
-    try:
-        deployments = validate_deployments_and_unlink_refs(mist_app, (int(os.path.basename(file)[:2]), deployment,))
-        for _, deployment in deployments:
-            mist_app.update(deployment)
-    except Exception as e:
-        click.UsageError(str(e))
-
-
 def validate_artifact(mist_app, file_path, artifact_name=None):
     if artifact_name is None:
         artifact_name = os.path.basename(file_path)
@@ -364,77 +255,6 @@ def validate_artifact(mist_app, file_path, artifact_name=None):
         should_be_updated = True
 
     return should_be_updated
-
-
-def validate_deployments_and_unlink_refs(mist_app, *deployments):
-    """
-    :type mist_app: mist.app.MistApp
-    :param mist_app:
-    :type deployments: (int, Deployment)
-    :param deployments:
-    :return:
-    """
-    res = []
-    context_names = dict((d[1].name, d[1]) for d in deployments if d[1].model_type == 'Context')
-    artifact_names = dict((d[1].name, d[1]) for d in deployments if d[1].model_type == 'Artifact')
-
-    for priority, deployment in deployments:
-        if deployment.model_type == 'Artifact':
-            job_path = deployment.data['file-path']
-            artifact_name = deployment.get_name()
-            if validate_artifact(mist_app, job_path, artifact_name):
-                res.append((priority, deployment))
-
-        elif deployment.model_type == 'Context':
-            if mist_app.validate:
-                click.echo('Validating context {}'.format(deployment.get_name()))
-                context = mist_app.get_context(deployment.get_name())
-                if context is not None:
-                    raise RuntimeError('Found context by name {} and version {}. Aborting'.format(
-                        deployment.name, deployment.version
-                    ))
-
-            click.echo('Context {} validated'.format(deployment.get_name()))
-            res.append((priority, deployment))
-        elif deployment.model_type == 'Endpoint':
-            if mist_app.validate:
-                click.echo('Validating endpoint {}'.format(deployment.get_name()))
-                remote_ep = mist_app.get_endpoint(deployment.get_name())
-                if remote_ep is not None:
-                    raise RuntimeError("Endpoint {} with version {} exists remotely. Aborting".format(
-                        deployment.name, deployment.version
-                    ))
-
-            ctx_name = deployment.data['context']
-            remote_ctx = mist_app.get_context(ctx_name)
-            if ctx_name not in context_names and remote_ctx is None:
-                raise RuntimeError("Context not exists by name {}".format(ctx_name))
-
-            deployment.data['context'] = context_names[ctx_name].get_name()
-            job_link = deployment.data['path']
-            _, ext = os.path.splitext(job_link)
-
-            if ext == '' and job_link not in artifact_names:
-                raise RuntimeError('Artifact not found by link {}'.format(job_link))
-
-            if ext == '':
-                artifact_name = artifact_names[job_link].get_name()
-            else:  # job_link is considered to be job_path
-                filename = os.path.basename(job_link)
-                if validate_artifact(mist_app, job_link, filename):
-                    res.append((-1000, Deployment(
-                        os.path.basename(job_link),
-                        'Artifact',
-                        ConfigFactory.from_dict({'file-path':job_link})
-                    )))
-                    artifact_name = filename
-
-            click.echo('Endpoint {} path {}'.format(deployment.get_name(), artifact_name))
-            deployment.data['path'] = artifact_name
-            res.append((priority, deployment))
-        else:
-            continue
-    return res
 
 
 def generate_request(endpoint_json):
@@ -506,7 +326,7 @@ def print_examples(mist_app, deployment):
         click.echo('Get artifact file')
         click.echo('-' * 80)
         click.echo("curl -H 'Content-Type: application/json' -X POST {url}/artifacts/{name}".format(
-          url=url, name=deployment.get_name()
+            url=url, name=deployment.get_name()
         ))
     elif deployment.model_type == 'Context':
         click.echo('Get context info')
@@ -515,33 +335,6 @@ def print_examples(mist_app, deployment):
             url=url, name=deployment.get_name()
         ))
     click.echo('\n')
-
-
-def process_dir(mist_app, folder):
-    click.echo('processing {}'.format(folder))
-    things_to_update = []
-    for f in os.listdir(folder):
-        if f.endswith('.conf'):
-            priority = int(f[0: 2])
-            deployment = mist_app.parse_deployment(os.path.join(folder, f))
-            things_to_update.append((priority, deployment))
-    try:
-        # for consistency:
-        # 1) job exists by path;
-        # 2) uploaded job version match repository one (validate sha)
-        # 3) context exists by label or present in deployments to update
-        # 4) update with same version but different contents
-        deployments = validate_deployments_and_unlink_refs(mist_app, *things_to_update)
-        deployments = list(sorted(deployments, key=lambda t: t[0]))
-        for _, deployment in deployments:
-            mist_app.update(deployment)
-        click.echo('\n')
-        click.echo('Example commands')
-        click.echo('-' * 80)
-        for _, deployment in deployments:
-            print_examples(mist_app, deployment)
-    except Exception as e:
-        raise click.UsageError(str(e))
 
 
 @mist_cli.command('apply')
@@ -554,26 +347,22 @@ def process_dir(mist_app, folder):
               required=True, type=click.Path(exists=True, file_okay=False))
 @click.option('--validate', type=bool, default=True)
 def apply(ctx, mist_app, folder, validate):
+    """
+
+    :param ctx:
+    :type mist_app: mist.app.MistApp
+    :param mist_app:
+    :param folder:
+    :param validate:
+    :return:
+    """
     mist_app.validate = validate
-    dirs = []
-    with_files = False
-    for f in os.listdir(folder):
-        path = os.path.join(folder, f)
-        if os.path.isfile(path):
-            with_files = True
-        else:
-            dirs.append(path)
-
-    with_dirs = len(dirs) != 0
-
-    if with_dirs and with_files:
-        raise click.UsageError('folder {} must contain only directories or only files'.format(folder), ctx)
-
-    if not with_dirs and not with_files:
-        raise click.UsageError('{} should not be empty'.format(folder), ctx)
-
-    if with_files:
-        dirs.append(folder)
-
-    for d in dirs:
-        process_dir(mist_app, d)
+    glob_expr = os.path.abspath(folder) + '/**/*.conf'
+    deployments = list(map(mist_app.parse_deployment, glob.glob(glob_expr, recursive=True)))
+    click.echo("Proccess {} file entries".format(len(deployments)))
+    try:
+        mist_app.update_deployments(deployments)
+    except ValueError as e:
+        raise click.BadArgumentUsage(str(e), ctx)
+    except Exception as ex:
+        raise click.UsageError(str(ex))

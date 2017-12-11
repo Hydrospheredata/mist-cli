@@ -76,16 +76,6 @@ class ArtifactParser(NamedConfigParser):
         )
 
 
-class BadConfigException(Exception):
-    def __init__(self, errors):
-        self.errors = errors
-
-
-class DeployFailedException(Exception):
-    def __init__(self, errors):
-        self.errors = errors
-
-
 class FileExistsException(Exception):
     def __init__(self, filename):
         self.filename = filename
@@ -135,14 +125,18 @@ class MistApp(object):
         cfg = ConfigFactory.parse_file(deployment_conf)
         model_type = cfg['model']
         name = cfg.get_string('name', os.path.basename(os.path.dirname(deployment_conf)))
+        version = None
+        if model_type == 'Artifact':
+            version = cfg['version']
+
         return Deployment(
             name,
             model_type,
             cfg.get_config('data', ConfigTree()),
-            cfg['version']
+            version
         )
 
-    def __resolve_parser_and_update_fn(self, model_type):
+    def __resolve_by_model_type(self, model_type):
         """
         :param model_type:
         :raise RuntimeError
@@ -152,15 +146,18 @@ class MistApp(object):
         if model_type == 'Artifact':
             parser = self.artifact_parser
             update_fn = self.__upload_artifact
+            validate_fn = self._validate_artifact
         elif model_type == 'Endpoint':
             parser = self.endpoint_parser
             update_fn = self.deploy_endpoint
+            validate_fn = self._validate_endpoint
         elif model_type == 'Context':
             parser = self.context_parser
             update_fn = self.deploy_context
+            validate_fn = self._validate_context
         else:
             raise RuntimeError('unknown model type')
-        return parser, update_fn
+        return parser, validate_fn, update_fn
 
     def update(self, deployment):
         """
@@ -171,54 +168,22 @@ class MistApp(object):
         """
         model_type = deployment.model_type
         print("updating {}".format(model_type))
-        parser, update_fn = self.__resolve_parser_and_update_fn(model_type)
+        parser, validate_fn, update_fn = self.__resolve_by_model_type(model_type)
 
         item = parser.parse(deployment.name, deployment.data)
-        item.with_version(deployment.version)
-        return update_fn(item)
-
-    def parse_config(self, file_path):
-        """
-        :param file_path:
-
-        :return: endpoints and contexts in tuple
-        :rtype: (list of Endpoint, list of Context)
-        """
-        config = ConfigFactory.parse_file(file_path)
-        endpoints = []
-        errors = []
-        contexts = defaultdict(lambda: Context('default'))
-        contexts_cfg = config.get_config('mist.contexts')
-        for k in contexts_cfg.keys():
-            try:
-                v = contexts_cfg[k]
-                contexts[k] = self.context_parser.parse(k, v)
-            except Exception as e:
-                errors.append(e)
-        endpoints_cfg = config.get_config('mist.endpoints')
-        for k in endpoints_cfg.keys():
-            try:
-                v = endpoints_cfg[k]
-                endpoint = self.endpoint_parser.parse(k, v)
-                endpoint.default_context = contexts.get(endpoint.default_context.name, endpoint.default_context)
-                endpoints.append(endpoint)
-            except Exception as e:
-                errors.append(e)
-
-        if len(errors) != 0:
-            raise BadConfigException(errors)
-
-        return endpoints, contexts.values()
-
-    def upload_job(self, filename=None):
-        if filename is None:
-            filename, _ = os.path.splitext(os.path.basename(self.job_path))
-        return self.__upload_artifact(Artifact(filename, self.job_path)).file_path
+        validated = True
+        if self.validate:
+            validated = validate_fn(item)
+        if validated:
+            item.with_version(deployment.version)
+            return update_fn(item)
+        raise ValueError("some error happened deploying {}".format(deployment.get_name()))
 
     def __upload_artifact(self, artifact):
         with open(artifact.file_path, 'rb') as job:
             _, ext = os.path.splitext(artifact.file_path)
-            url = 'http://{}:{}/v2/api/artifacts'.format(self.host, self.port)
+            force = str(not self.validate).lower()
+            url = 'http://{}:{}/v2/api/artifacts?force={}'.format(self.host, self.port, force)
             artifact_filename = artifact.name + ext
             print(artifact_filename)
             files = {'file': (artifact_filename, job)}
@@ -228,27 +193,6 @@ class MistApp(object):
                 resp.raise_for_status()
                 job_path = resp.text
                 return Artifact(artifact.name, job_path)
-
-    def deploy(self, endpoints, contexts, job_version=''):
-        uploaded_file_path = self.upload_job(self.__format_job_name(job_version))
-
-        for e in endpoints:
-            e.with_path(uploaded_file_path)
-
-        return self.__deploy(endpoints, contexts)
-
-    def dev_deploy(self, endpoints, contexts, dev, job_version):
-        uploaded_file_path = self.upload_job(self.__format_job_name(job_version, dev))
-
-        for c in contexts:
-            c.with_dev(dev).with_version(job_version)
-
-        for e in endpoints:
-            e.with_dev(dev) \
-                .with_version(job_version) \
-                .with_path(uploaded_file_path)
-
-        return self.__deploy(endpoints, contexts)
 
     def deploy_endpoint(self, endpoint):
         url = 'http://{}:{}/v2/api/endpoints'.format(self.host, self.port)
@@ -330,36 +274,31 @@ class MistApp(object):
         args.append(version)
         return add_suffixes(self.job_path, *args)
 
-    def __deploy(self, endpoints, contexts):
-        errors = []
-        updated_ctx = []
-
-        for c in contexts:
-            try:
-                self.deploy_context(c)
-                updated_ctx.append(c)
-            except HTTPError as err:
-                errors.append(('Context ' + c.name, err))
-
-        updated_ctx_name = list(map(lambda c: c.name, updated_ctx))
-
-        def updated_ctx_or_default(endpoint):
-            return endpoint.default_context.name in updated_ctx_name or endpoint.default_context.name == 'default'
-
-        filtered = filter(updated_ctx_or_default, endpoints)
-        deployed_endpoints = []
-        for e in filtered:
-            try:
-                deployed_endpoints.append(self.deploy_endpoint(e))
-            except HTTPError as err:
-                errors.append(('Endpoint ' + e.name, err))
-        if len(errors) != 0:
-            raise DeployFailedException(errors)
-        return deployed_endpoints, updated_ctx
-
     def get_full_endpoint(self, endpoint_name):
         url = 'http://{}:{}/v2/api/endpoints/{}'.format(self.host, self.port, quote(endpoint_name))
         with requests.get(url) as resp:
             if resp.status_code == 200:
                 return resp.json()
             return None
+
+    def update_deployments(self, deployments):
+        for depl in deployments:
+            self.update(depl)
+
+    def _validate_artifact(self, a):
+        remote_file_sha = self.get_sha1(a.name)
+        print(remote_file_sha)
+        return remote_file_sha is None
+
+    def _validate_context(self, c):
+        return True
+
+    def _validate_endpoint(self, e):
+        """
+        :type e: Endpoint
+        :param e:
+        :return:
+        """
+        remote_ctx = self.get_context(e.default_context)
+        artifact_sha = self.get_sha1(e.path)
+        return remote_ctx is not None and artifact_sha is not None
