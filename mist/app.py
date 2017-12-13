@@ -159,11 +159,11 @@ class MistApp(object):
             validate_fn = self._validate_artifact
         elif model_type == 'Endpoint':
             parser = self.endpoint_parser
-            update_fn = self.deploy_endpoint
+            update_fn = self.update_endpoint
             validate_fn = self._validate_endpoint
         elif model_type == 'Context':
             parser = self.context_parser
-            update_fn = self.deploy_context
+            update_fn = self.update_context
             validate_fn = self._validate_context
         else:
             raise RuntimeError('unknown model type')
@@ -204,14 +204,14 @@ class MistApp(object):
                 job_path = resp.text
                 return Artifact(artifact.name, job_path)
 
-    def deploy_endpoint(self, endpoint):
+    def update_endpoint(self, endpoint):
         url = 'http://{}:{}/v2/api/endpoints'.format(self.host, self.port)
         data = endpoint.to_json()
         with requests.post(url, json=data) as resp:
             resp.raise_for_status()
             return Endpoint.from_json(resp.json())
 
-    def deploy_context(self, context):
+    def update_context(self, context):
         url = 'http://{}:{}/v2/api/contexts'.format(self.host, self.port)
         data = context.to_json()
         with requests.post(url, json=data) as resp:
