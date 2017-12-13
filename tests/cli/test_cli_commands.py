@@ -1,15 +1,13 @@
 import json
 import os
 import shutil
-import unittest
+import sys
 from unittest import TestCase
 
 from click import testing
 from mock import MagicMock
-from pyhocon import ConfigFactory, ConfigTree
 
 from mist import cli, app, models
-import sys
 
 
 def make_dirs(directory, exist_ok=False):
@@ -32,23 +30,10 @@ class CliTest(TestCase):
         with open(file_path, 'w+') as f:
             f.write('print "Hello!"')
         self.job_path = file_path
-
-        conf_path = os.path.join(dir_path, 'test_conf.conf')
-        with open(conf_path, 'w+') as f:
-            f.write("""
-            mist {
-                endpoints {
-                }
-                contexts {
-                }
-            }
-            """)
-
         self.test_apply_folder = os.path.abspath('../../example/simple-context')
         self.test_apply_invalid_folder1 = dir_path
         make_dirs(os.path.join(dir_path, 'test'), exist_ok=True)
         self.apply_job_path = self.setup_job(dir_path)
-        self.config_path = conf_path
 
     def setup_job(self, dir_path):
         job_path = os.path.join(dir_path, 'simple-context')
@@ -102,7 +87,6 @@ class CliTest(TestCase):
 
     def tearDown(self):
         os.remove(self.job_path)
-        os.remove(self.config_path)
         shutil.rmtree(os.path.join(self.test_apply_invalid_folder1, 'test'))
         shutil.rmtree(self.apply_job_path)
 
@@ -133,96 +117,6 @@ class CliTest(TestCase):
         self.assertTrue('test-job-id' in j_res.output)
         self.assertTrue('Test' in e_res.output)
         self.assertTrue('foo' in c_res.output)
-
-    def test_mist_cli_deploy(self):
-        mist_app = app.MistApp()
-        mist_app.deploy = MagicMock(return_value=([models.Function('test', 'Test', 'foo')], [models.Context('foo')]))
-        args = [
-            '--job-path', self.job_path,
-            '--config-path', self.config_path,
-            '--job-version', '0.0.1'
-        ]
-        res = self.runner.invoke(cli.deploy, args=args, obj=mist_app)
-        # requires some input for accepting deploy or arg
-        self.assertEqual(res.exit_code, 1)
-
-        res = self.runner.invoke(cli.deploy, args=args, obj=mist_app, input='yes')
-        self.assertEqual(res.exit_code, 0)
-        mist_app.accept_all = True
-
-        res = self.runner.invoke(cli.deploy, args=args, obj=mist_app)
-        self.assertEqual(res.exit_code, 0)
-
-    def test_mist_cli_dev_deploy(self):
-        mist_app = app.MistApp()
-        mist_app.parse_config = MagicMock(
-            return_value=([models.Function('test', 'Test', 'foo')], [models.Context('foo')]))
-        mist_app.dev_deploy = MagicMock(
-            return_value=([models.Function('test', 'Test', 'foo')], [models.Context('foo')]))
-        args = [
-            '--job-path', self.job_path,
-            '--config-path', self.config_path,
-            '--job-version', '0.0.1',
-            '--user', 'foo'
-        ]
-        res = self.runner.invoke(cli.dev_deploy, args=args, obj=mist_app)
-        self.assertEqual(res.exit_code, 0)
-        mist_app.dev_deploy.assert_called_once()
-        request = mist_app.dev_deploy.call_args
-        eps, ctxs, user, version = request[0]
-        self.assertEqual(len(eps), 1)
-        self.assertEqual(len(ctxs), 1)
-        self.assertEqual(user, 'foo')
-        self.assertEqual(version, '0.0.1')
-
-    def test_mist_cli_dev_deploy_wrong_args(self):
-        mist_app = app.MistApp()
-        mist_app.parse_config = MagicMock(
-            return_value=([models.Function('test', 'Test', 'foo')], [models.Context('foo')]))
-        mist_app.dev_deploy = MagicMock(
-            return_value=([models.Function('test', 'Test', 'foo')], [models.Context('foo')]))
-        wrong_args = [
-            '--job-path', '/tmp/not_existent_file.py',
-            '--job-version', '0.0.1',
-            '--user', 'foo'
-        ]
-        res = self.runner.invoke(cli.dev_deploy, args=wrong_args, obj=mist_app)
-        self.assertEqual(res.exit_code, 2)
-
-        wrong_args = [
-            '--job-path', self.job_path,
-            '--config-path', '/tmp/not_existent_file.conf',
-            '--job-version', '0.0.1',
-            '--user', 'foo'
-        ]
-        res = self.runner.invoke(cli.dev_deploy, args=wrong_args, obj=mist_app)
-        self.assertEqual(res.exit_code, 2)
-
-        wrong_args = [
-            '--job-path', self.job_path,
-            '--config-path', self.config_path,
-            '--job-version', 'asd.0.1',
-            '--user', 'foo'
-        ]
-        res = self.runner.invoke(cli.dev_deploy, args=wrong_args, obj=mist_app)
-        self.assertEqual(res.exit_code, 2)
-
-    def test_mist_cli_dev_deploy_prompt_for_empty_options(self):
-        mist_app = app.MistApp()
-        mist_app.parse_config = MagicMock(
-            return_value=([models.Function('test', 'Test', 'foo')], [models.Context('foo')]))
-        mist_app.dev_deploy = MagicMock(
-            return_value=([models.Function('test', 'Test', 'foo')], [models.Context('foo')]))
-        res = self.runner.invoke(cli.dev_deploy, args=[
-            '--job-path', self.job_path,
-            '--config-path', self.config_path
-        ], obj=mist_app, input='foo\n0.0.1')
-        self.assertEqual(res.exit_code, 0)
-        mist_app.dev_deploy.assert_called_once()
-        request = mist_app.dev_deploy.call_args
-        _, _, dev, version = request[0]
-        self.assertEqual(dev, 'foo')
-        self.assertEqual(version, '0.0.1')
 
     def test_mist_cli_start_job(self):
         mist_app = app.MistApp()
@@ -327,10 +221,3 @@ class CliTest(TestCase):
         })
         res = self.runner.invoke(cli.apply, ('--folder', self.apply_job_path, '--validate', 'false'), obj=mist_app)
         self.assertEqual(0, res.exit_code)
-
-
-        # def test_mist_cli_apply_existing_configs_without_validation(self):
-        #     pass
-        #
-        # def test_mist_cli_apply_existing_configs_with_validation(self):
-        #     pass
