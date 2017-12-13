@@ -296,7 +296,7 @@ class CliTest(TestCase):
         mist_app.get_context = MagicMock(return_value=None)
         mist_app.get_endpoint = MagicMock(return_value=None)
         mist_app.update = MagicMock()
-        mist_app.get_full_endpoint = MagicMock(return_value={
+        mist_app.get_endpoint_json = MagicMock(return_value={
             'execute': {
                 'test-arg': {
                     'args': [
@@ -315,7 +315,7 @@ class CliTest(TestCase):
         mist_app.get_context = MagicMock(return_value=None)
         # app.calculate_sha1 = MagicMock(return_value='TEST_CONTENT')
         mist_app.update = MagicMock()
-        mist_app.get_full_endpoint = MagicMock(return_value={
+        mist_app.get_endpoint_json = MagicMock(return_value={
             'execute': {
                 'test-arg': {
                     'args': [

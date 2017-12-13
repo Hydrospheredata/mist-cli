@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+from abc import abstractmethod
 
 import click
 import requests
@@ -271,11 +272,10 @@ class MistApp(object):
             return None
 
     def get_endpoint(self, endpoint_name):
-        url = 'http://{}:{}/v2/api/endpoints/{}'.format(self.host, self.port, quote(endpoint_name))
-        with requests.get(url) as resp:
-            if resp.status_code == 200:
-                return Endpoint.from_json(resp.json())
-            return None
+        endpoint = self.get_endpoint_json(endpoint_name)
+        if endpoint is not None:
+            return Endpoint.from_json(endpoint)
+        return None
 
     def __format_job_name(self, version, dev=''):
         args = []
@@ -284,7 +284,7 @@ class MistApp(object):
         args.append(version)
         return add_suffixes(self.job_path, *args)
 
-    def get_full_endpoint(self, endpoint_name):
+    def get_endpoint_json(self, endpoint_name):
         url = 'http://{}:{}/v2/api/endpoints/{}'.format(self.host, self.port, quote(endpoint_name))
         with requests.get(url) as resp:
             if resp.status_code == 200:

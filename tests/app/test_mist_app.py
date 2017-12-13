@@ -327,7 +327,7 @@ class MistAppTest(TestCase):
             }
         """)
         mist = MistApp()
-        res = mist.get_full_endpoint('simple')
+        res = mist.get_endpoint_json('simple')
         self.assertIsInstance(res, dict)
         self.assertIn('execute', res)
 
