@@ -362,7 +362,5 @@ def apply(ctx, mist_app, folder, validate):
     click.echo("Proccess {} file entries".format(deployments))
     try:
         mist_app.update_deployments(list(map(lambda t: t[1], deployments)))
-    except ValueError as e:
-        raise click.BadArgumentUsage(str(e), ctx)
     except Exception as ex:
         raise click.UsageError(str(ex))

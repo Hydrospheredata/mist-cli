@@ -1,11 +1,10 @@
 import hashlib
 import json
 import os
-from collections import defaultdict
 
+import click
 import requests
 from pyhocon import ConfigFactory, ConfigTree
-from requests.exceptions import HTTPError
 
 from mist.models import Endpoint, Context, Worker, Job, Deployment, Artifact
 
@@ -122,10 +121,6 @@ class MistApp(object):
 
     @staticmethod
     def parse_deployment(deployment_conf):
-        try:
-            priority = int(os.path.basename(deployment_conf)[0:2])
-        except ValueError as e:
-            priority = 1000
 
         cfg = ConfigFactory.parse_file(deployment_conf)
         model_type = cfg['model']
@@ -134,12 +129,22 @@ class MistApp(object):
         if model_type == 'Artifact':
             version = cfg['version']
 
+        priority = MistApp.__safe_get_priority(deployment_conf)
+
         return priority, Deployment(
             name,
             model_type,
             cfg.get_config('data', ConfigTree()),
             version
         )
+
+    @staticmethod
+    def __safe_get_priority(deployment_file_path):
+        try:
+            priority = int(os.path.basename(deployment_file_path)[0:2])
+        except ValueError:
+            priority = 1000
+        return priority
 
     def __resolve_by_model_type(self, model_type):
         """
@@ -172,7 +177,7 @@ class MistApp(object):
         :rtype:
         """
         model_type = deployment.model_type
-        print("updating {}".format(model_type))
+        print("updating {}".format(deployment.get_name()))
         parser, validate_fn, update_fn = self.__resolve_by_model_type(model_type)
 
         item = parser.parse(deployment.name, deployment.data)
@@ -288,7 +293,10 @@ class MistApp(object):
 
     def update_deployments(self, deployments):
         for depl in deployments:
-            self.update(depl)
+            try:
+                self.update(depl)
+            except ValueError as e:
+                raise click.BadArgumentUsage(str(e))
 
     def _validate_artifact(self, a):
         remote_file_sha = self.get_sha1(a.name)
