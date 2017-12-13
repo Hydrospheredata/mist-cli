@@ -251,7 +251,7 @@ class MistAppTest(TestCase):
 
     def test_parse_deployment_w_name_defined(self, m):
         mist = MistApp()
-        res = mist.parse_deployment(self.apply_artifact_config)
+        priority, res = mist.parse_deployment(self.apply_artifact_config)
         self.assertIsInstance(res, models.Deployment)
         self.assertEqual(res.name, 'test-artifact')
         self.assertEqual(res.version, '0.0.1')
@@ -259,7 +259,7 @@ class MistAppTest(TestCase):
 
     def test_parse_deployment_wo_name(self, m):
         mist = MistApp()
-        res = mist.parse_deployment(self.apply_artifact_config2)
+        priority, res = mist.parse_deployment(self.apply_artifact_config2)
         self.assertIsInstance(res, models.Deployment)
         self.assertEqual(res.name, 'app')
         self.assertEqual(res.version, '0.0.1')
@@ -276,12 +276,16 @@ class MistAppTest(TestCase):
         mist._MistApp__upload_artifact = MagicMock(return_value=artifact)
         mist.update_context = MagicMock(return_value=context)
         mist.update_function = MagicMock(return_value=endpoint)
-        mist.update(models.Deployment('test-artifact.py', 'Artifact', ConfigTree()))
+        mist._validate_artifact = MagicMock(return_value=None)
+        mist._validate_function = MagicMock(return_value=None)
+        mist._validate_context = MagicMock(return_value=None)
+
+        mist.update(models.Deployment('test-artifact.py', 'Artifact', ConfigTree(**{'file-path': 'test-path.py'})))
         mist.update(models.Deployment('test-context', 'Context', ConfigTree()))
-        mist.update(models.Deployment('test-endpoint', 'Function', ConfigTree(), '0.0.1'))
+        mist.update(models.Deployment('test-endpoint', 'Function', ConfigTree()))
         call_artifact = mist._MistApp__upload_artifact.call_args[0][0]
         call_endpoint = mist.update_function.call_args[0][0]
         call_context = mist.update_context.call_args[0][0]
         self.assertEqual(call_artifact.name, 'test-artifact.py')
         self.assertEqual(call_context.name, 'test-context')
-        self.assertEqual(call_endpoint.name, 'test-endpoint_0_0_1')
+        self.assertEqual(call_endpoint.name, 'test-endpoint')

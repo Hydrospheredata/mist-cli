@@ -1,12 +1,12 @@
+import glob
 import json
 import os
 import random
 from functools import update_wrapper
-import glob
+
 import click
 import math
 from click.globals import get_current_context
-from pyhocon import ConfigFactory
 from texttable import Texttable
 
 from mist import app
@@ -199,7 +199,7 @@ def list_jobs(ctx, mist_app, filter):
     list_items(ctx, mist_app, Job, filter)
 
 
-@list_cmd.command('endpoints', help='List all endpoints')
+@list_cmd.command('functions', help='List all endpoints')
 @pass_mist_app
 def list_endpoints(ctx, mist_app):
     list_items(ctx, mist_app, Function)
@@ -232,29 +232,6 @@ def start_job(ctx, mist_app, endpoint, request, pretty):
     click.echo(
         json.dumps(mist_app.start_job(endpoint, request), **kw)
     )
-
-
-def validate_artifact(mist_app, file_path, artifact_name=None):
-    if artifact_name is None:
-        artifact_name = os.path.basename(file_path)
-
-    if not os.path.exists(file_path):
-        raise RuntimeError("job deployment should exists by path {}".format(file_path))
-
-    should_be_updated = False
-    uploaded_job_sha = mist_app.get_sha1(artifact_name)
-    if uploaded_job_sha is not None:
-        calculated_sha = app.calculate_sha1(file_path)
-        if calculated_sha != uploaded_job_sha:
-            raise RuntimeError('Artifact {} content is differ with remote version, please specify different '
-                               'version of artifact: path {}'.format(artifact_name, file_path))
-        else:
-            click.echo('Artifact {} already exists'.format(artifact_name))
-    else:
-        click.echo('Artifact {} is valid and will be updated'.format(artifact_name))
-        should_be_updated = True
-
-    return should_be_updated
 
 
 def generate_request(endpoint_json):
@@ -339,25 +316,29 @@ def print_examples(mist_app, deployment):
 
 @mist_cli.command('apply')
 @pass_mist_app
-@click.option('-f', '--folder',
+@click.option('-f', '--path',
               help="""
               Folder either containing directories with configuration or 
-              folder with configuration of deployment stages
+              path with configuration of deployment stages
               """,
-              required=True, type=click.Path(exists=True, file_okay=False))
+              required=True, type=click.Path(exists=True, file_okay=True))
 @click.option('--validate', type=bool, default=True)
-def apply(ctx, mist_app, folder, validate):
+def apply(ctx, mist_app, path, validate):
     """
 
     :param ctx:
     :type mist_app: mist.app.MistApp
     :param mist_app:
-    :param folder:
+    :param path:
     :param validate:
     :return:
     """
     mist_app.validate = validate
-    glob_expr = os.path.abspath(folder) + '/**/*.conf'
-    deployments = sorted(map(mist_app.parse_deployment, glob.glob(glob_expr, recursive=True)), key=lambda t: t[0])
+
+    if os.path.isfile(path):
+        deployments = [mist_app.parse_deployment(path)]
+    else:
+        glob_expr = os.path.abspath(path) + '/**/*.conf'
+        deployments = sorted(map(mist_app.parse_deployment, glob.glob(glob_expr, recursive=True)), key=lambda t: t[0])
     click.echo("Proccess {} file entries".format(len(deployments)))
     mist_app.update_deployments(list(map(lambda t: t[1], deployments)))
