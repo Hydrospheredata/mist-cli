@@ -216,6 +216,11 @@ class Artifact(NamedConfig):
         super(Artifact, self).__init__(name)
         self.file_path = file_path
 
+    @property
+    def artifact_key(self):
+        _, ext = os.path.splitext(self.file_path)
+        artifact_filename = self.name + ext
+        return artifact_filename
 
 class Deployment(object):
     def __init__(self, name, model_type, data, version=None):

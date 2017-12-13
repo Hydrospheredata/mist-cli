@@ -1,7 +1,6 @@
 import hashlib
 import json
 import os
-from abc import abstractmethod
 
 import click
 import requests
@@ -178,27 +177,22 @@ class MistApp(object):
         :rtype:
         """
         model_type = deployment.model_type
-        print("updating {}".format(deployment.get_name()))
+        print("updating {} {}".format(deployment.model_type, deployment.get_name()))
         parser, validate_fn, update_fn = self.__resolve_by_model_type(model_type)
 
         item = parser.parse(deployment.name, deployment.data)
-        validated = True
+        item.with_version(deployment.version)
         if self.validate:
-            validated = validate_fn(item)
-        if validated:
-            item.with_version(deployment.version)
-            return update_fn(item)
-        raise ValueError("some error happened deploying {}".format(deployment.get_name()))
+            validate_fn(item)
+
+        return update_fn(item)
 
     def __upload_artifact(self, artifact):
-        with open(artifact.file_path, 'rb') as job:
-            _, ext = os.path.splitext(artifact.file_path)
-            force = str(not self.validate).lower()
-            url = 'http://{}:{}/v2/api/artifacts?force={}'.format(self.host, self.port, force)
-            artifact_filename = artifact.name + ext
-            print(artifact_filename)
-            files = {'file': (artifact_filename, job)}
-            with requests.post(url, files=files) as resp:
+        with open(artifact.file_path, 'rb') as fn_file:
+            url = 'http://{}:{}/v2/api/artifacts'.format(self.host, self.port)
+            artifact_filename = artifact.artifact_key
+            files = {'file': (artifact_filename, fn_file)}
+            with requests.post(url, files=files, params={'force': not self.validate}) as resp:
                 if resp.status_code == 409:
                     raise FileExistsException(artifact_filename)
                 resp.raise_for_status()
@@ -208,7 +202,7 @@ class MistApp(object):
     def update_endpoint(self, endpoint):
         url = 'http://{}:{}/v2/api/endpoints'.format(self.host, self.port)
         data = endpoint.to_json()
-        with requests.post(url, json=data) as resp:
+        with requests.post(url, json=data, params={'force': not self.validate}) as resp:
             resp.raise_for_status()
             return Endpoint.from_json(resp.json())
 
@@ -258,14 +252,14 @@ class MistApp(object):
             return resp.json()
 
     def get_sha1(self, artifact_name):
-        url = 'http://{}:{}/v2/api/artifacts/{}/sha'.format(self.host, self.port, quote(artifact_name))
+        url = 'http://{}:{}/v2/api/artifacts/{}/sha'.format(self.host, self.port, quote(artifact_name, safe=''))
         with requests.get(url) as resp:
             if resp.status_code == 200:
                 return resp.text
             return None
 
     def get_context(self, context_name):
-        url = 'http://{}:{}/v2/api/contexts/{}'.format(self.host, self.port, quote(context_name))
+        url = 'http://{}:{}/v2/api/contexts/{}'.format(self.host, self.port, quote(context_name, safe=''))
         with requests.get(url) as resp:
             if resp.status_code == 200:
                 return Context.from_json(resp.json())
@@ -285,7 +279,7 @@ class MistApp(object):
         return add_suffixes(self.job_path, *args)
 
     def get_endpoint_json(self, endpoint_name):
-        url = 'http://{}:{}/v2/api/endpoints/{}'.format(self.host, self.port, quote(endpoint_name))
+        url = 'http://{}:{}/v2/api/endpoints/{}'.format(self.host, self.port, quote(endpoint_name, safe=''))
         with requests.get(url) as resp:
             if resp.status_code == 200:
                 return resp.json()
@@ -295,16 +289,22 @@ class MistApp(object):
         for depl in deployments:
             try:
                 self.update(depl)
-            except ValueError as e:
-                raise click.BadArgumentUsage(str(e))
+                click.echo('Success: {} {}'.format(depl.model_type, depl.get_name()))
+            except Exception as e:
+                click.echo('Error: ' + str(e))
 
     def _validate_artifact(self, a):
-        remote_file_sha = self.get_sha1(a.name)
-        print(remote_file_sha)
-        return remote_file_sha is None
+        """
+        :type a: Artifact
+        :param a:
+        :return:
+        """
+        remote_file_sha = self.get_sha1(a.artifact_key)
+        if remote_file_sha is not None:
+            raise ValueError("Artifact key {} has to be unique".format(a.artifact_key))
 
     def _validate_context(self, c):
-        return True
+        pass
 
     def _validate_endpoint(self, e):
         """
@@ -312,6 +312,15 @@ class MistApp(object):
         :param e:
         :return:
         """
-        remote_ctx = self.get_context(e.default_context)
+        remote_ctx = self.get_context(e.default_context.name)
         artifact_sha = self.get_sha1(e.path)
-        return remote_ctx is not None and artifact_sha is not None
+
+        message_tmpl = "{} {} is not valid. Please check: {}"
+
+        if remote_ctx is None:
+            msg = 'Context {} should exists remotely'.format(e.default_context.name)
+            raise ValueError(message_tmpl.format('Endpoint', e.name, msg))
+
+        if artifact_sha is None:
+            msg = 'Artifact {} should exists remotely'.format(e.path)
+            raise ValueError(message_tmpl.format('Endpoint', e.name, msg))

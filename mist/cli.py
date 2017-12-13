@@ -359,8 +359,5 @@ def apply(ctx, mist_app, folder, validate):
     mist_app.validate = validate
     glob_expr = os.path.abspath(folder) + '/**/*.conf'
     deployments = sorted(map(mist_app.parse_deployment, glob.glob(glob_expr, recursive=True)), key=lambda t: t[0])
-    click.echo("Proccess {} file entries".format(deployments))
-    try:
-        mist_app.update_deployments(list(map(lambda t: t[1], deployments)))
-    except Exception as ex:
-        raise click.UsageError(str(ex))
+    click.echo("Proccess {} file entries".format(len(deployments)))
+    mist_app.update_deployments(list(map(lambda t: t[1], deployments)))
