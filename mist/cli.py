@@ -10,7 +10,7 @@ from pyhocon import ConfigFactory
 from texttable import Texttable
 
 from mist import app
-from mist.models import Worker, Job, Endpoint, Context, Deployment
+from mist.models import Worker, Job, Function, Context, Deployment
 
 CONTEXT_SETTINGS = dict(auto_envvar_prefix='MIST')
 
@@ -99,7 +99,7 @@ def draw_table(ctx, mist_app, items, header):
 __list_choices = {
     Worker: lambda mist_app, *args: mist_app.workers(),
     Job: lambda mist_app, *args: mist_app.jobs(*args),
-    Endpoint: lambda mist_app, *args: mist_app.endpoints(),
+    Function: lambda mist_app, *args: mist_app.functions(),
     Context: lambda mist_app, *args: mist_app.contexts()
 }
 
@@ -202,7 +202,7 @@ def list_jobs(ctx, mist_app, filter):
 @list_cmd.command('endpoints', help='List all endpoints')
 @pass_mist_app
 def list_endpoints(ctx, mist_app):
-    list_items(ctx, mist_app, Endpoint)
+    list_items(ctx, mist_app, Function)
 
 
 @list_cmd.command('contexts', help='List all contexts')
@@ -301,7 +301,7 @@ def print_examples(mist_app, deployment):
     :return:
     """
     url = 'http://{}:{}/v2/api'.format(mist_app.host, mist_app.port)
-    if deployment.model_type == 'Endpoint':
+    if deployment.model_type == 'Function':
         click.echo('Get info of endpoint resource')
         click.echo('-' * 80)
         endpoint_name = deployment.get_name()

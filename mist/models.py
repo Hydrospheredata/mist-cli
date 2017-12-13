@@ -9,7 +9,6 @@ def snake_to_camel_case(param_name):
     return first + ''.join(word.capitalize() for word in rest)
 
 
-
 class PrettyRow(object):
     __metaclass__ = ABCMeta
     header = []
@@ -44,7 +43,6 @@ class NamedConfig(JsonConfig):
         return self
 
     def with_version(self, version):
-
         if version is None:
             return self
 
@@ -101,11 +99,11 @@ class Context(NamedConfig, PrettyRow):
         )
 
 
-class Endpoint(NamedConfig, PrettyRow):
+class Function(NamedConfig, PrettyRow):
     header = ['ROUTE', 'DEFAULT CONTEXT', 'PATH', 'CLASS NAME']
 
     def __init__(self, name, class_name=None, context=None, path=None):
-        super(Endpoint, self).__init__(name)
+        super(Function, self).__init__(name)
 
         if isinstance(context, str):
             context = Context(context)
@@ -127,7 +125,7 @@ class Endpoint(NamedConfig, PrettyRow):
 
     @staticmethod
     def from_json(data):
-        return Endpoint(
+        return Function(
             data['name'],
             data['className'],
             Context(data.get('defaultContext', 'default')),
@@ -137,7 +135,7 @@ class Endpoint(NamedConfig, PrettyRow):
     @staticmethod
     def to_row(item):
         """
-        :type item: Endpoint
+        :type item: Function
         :param item:
         :return:
         """
@@ -221,6 +219,7 @@ class Artifact(NamedConfig):
         _, ext = os.path.splitext(self.file_path)
         artifact_filename = self.name + ext
         return artifact_filename
+
 
 class Deployment(object):
     def __init__(self, name, model_type, data, version=None):

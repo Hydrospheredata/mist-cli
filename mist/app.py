@@ -6,7 +6,7 @@ import click
 import requests
 from pyhocon import ConfigFactory, ConfigTree
 
-from mist.models import Endpoint, Context, Worker, Job, Deployment, Artifact
+from mist.models import Function, Context, Worker, Job, Deployment, Artifact
 
 try:
     from urllib.parse import quote
@@ -19,7 +19,7 @@ class NamedConfigParser(object):
         pass
 
 
-class EndpointParser(NamedConfigParser):
+class FunctionParser(NamedConfigParser):
     def parse(self, name, cfg):
         """
         :type name str
@@ -28,7 +28,7 @@ class EndpointParser(NamedConfigParser):
         :param cfg:
         :return:
         """
-        return Endpoint(
+        return Function(
             name,
             cfg.get_string('class-name'),
             Context(cfg.get_string('context', 'default')),
@@ -114,7 +114,7 @@ class MistApp(object):
         self.config_path = config_path
         self.accept_all = accept_all
         self.format_table = format_table
-        self.endpoint_parser = EndpointParser()
+        self.function_parser = FunctionParser()
         self.context_parser = ContextParser()
         self.artifact_parser = ArtifactParser()
         self.validate = validate
@@ -157,10 +157,10 @@ class MistApp(object):
             parser = self.artifact_parser
             update_fn = self.__upload_artifact
             validate_fn = self._validate_artifact
-        elif model_type == 'Endpoint':
-            parser = self.endpoint_parser
-            update_fn = self.update_endpoint
-            validate_fn = self._validate_endpoint
+        elif model_type == 'Function':
+            parser = self.function_parser
+            update_fn = self.update_function
+            validate_fn = self._validate_function
         elif model_type == 'Context':
             parser = self.context_parser
             update_fn = self.update_context
@@ -199,12 +199,12 @@ class MistApp(object):
                 job_path = resp.text
                 return Artifact(artifact.name, job_path)
 
-    def update_endpoint(self, endpoint):
+    def update_function(self, endpoint):
         url = 'http://{}:{}/v2/api/endpoints'.format(self.host, self.port)
         data = endpoint.to_json()
         with requests.post(url, json=data, params={'force': not self.validate}) as resp:
             resp.raise_for_status()
-            return Endpoint.from_json(resp.json())
+            return Function.from_json(resp.json())
 
     def update_context(self, context):
         url = 'http://{}:{}/v2/api/contexts'.format(self.host, self.port)
@@ -218,10 +218,10 @@ class MistApp(object):
         with requests.get(url) as resp:
             return list(map(Worker.from_json, resp.json()))
 
-    def endpoints(self):
+    def functions(self):
         url = 'http://{}:{}/v2/api/endpoints'.format(self.host, self.port)
         with requests.get(url) as resp:
-            return list(map(Endpoint.from_json, resp.json()))
+            return list(map(Function.from_json, resp.json()))
 
     def jobs(self, status_filter):
         filters = list(map(lambda s: s.strip(), status_filter.split(',')))
@@ -265,10 +265,10 @@ class MistApp(object):
                 return Context.from_json(resp.json())
             return None
 
-    def get_endpoint(self, endpoint_name):
-        endpoint = self.get_endpoint_json(endpoint_name)
-        if endpoint is not None:
-            return Endpoint.from_json(endpoint)
+    def get_function(self, function_name):
+        fn = self.get_endpoint_json(function_name)
+        if fn is not None:
+            return Function.from_json(fn)
         return None
 
     def __format_job_name(self, version, dev=''):
@@ -278,8 +278,8 @@ class MistApp(object):
         args.append(version)
         return add_suffixes(self.job_path, *args)
 
-    def get_endpoint_json(self, endpoint_name):
-        url = 'http://{}:{}/v2/api/endpoints/{}'.format(self.host, self.port, quote(endpoint_name, safe=''))
+    def get_endpoint_json(self, fn_name):
+        url = 'http://{}:{}/v2/api/endpoints/{}'.format(self.host, self.port, quote(fn_name, safe=''))
         with requests.get(url) as resp:
             if resp.status_code == 200:
                 return resp.json()
@@ -306,9 +306,9 @@ class MistApp(object):
     def _validate_context(self, c):
         pass
 
-    def _validate_endpoint(self, e):
+    def _validate_function(self, e):
         """
-        :type e: Endpoint
+        :type e: Function
         :param e:
         :return:
         """
@@ -319,8 +319,8 @@ class MistApp(object):
 
         if remote_ctx is None:
             msg = 'Context {} should exists remotely'.format(e.default_context.name)
-            raise ValueError(message_tmpl.format('Endpoint', e.name, msg))
+            raise ValueError(message_tmpl.format('Function', e.name, msg))
 
         if artifact_sha is None:
             msg = 'Artifact {} should exists remotely'.format(e.path)
-            raise ValueError(message_tmpl.format('Endpoint', e.name, msg))
+            raise ValueError(message_tmpl.format('Function', e.name, msg))

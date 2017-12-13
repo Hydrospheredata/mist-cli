@@ -89,7 +89,7 @@ class CliTest(TestCase):
             """)
         with open(os.path.join(job_path, '20endpoint.conf'), 'w+') as f:
             f.write("""
-            model = Endpoint
+            model = Function
             name = test-name 
             version = 0.0.1
             data {
@@ -114,7 +114,7 @@ class CliTest(TestCase):
         mist_app.workers = MagicMock(return_value=[models.Worker('test-worker-id', 'localhost:0', 'spark-ui')])
         mist_app.contexts = MagicMock(return_value=[models.Context('foo')])
         mist_app.jobs = MagicMock(return_value=[models.Job('test-job-id', 'test', 'foo', 'cli', 'started')])
-        mist_app.endpoints = MagicMock(return_value=[models.Endpoint('test', 'Test', 'foo')])
+        mist_app.functions = MagicMock(return_value=[models.Function('test', 'Test', 'foo')])
 
         def invoke_cmd(cmd):
             return self.runner.invoke(cmd, catch_exceptions=True, obj=mist_app)
@@ -136,7 +136,7 @@ class CliTest(TestCase):
 
     def test_mist_cli_deploy(self):
         mist_app = app.MistApp()
-        mist_app.deploy = MagicMock(return_value=([models.Endpoint('test', 'Test', 'foo')], [models.Context('foo')]))
+        mist_app.deploy = MagicMock(return_value=([models.Function('test', 'Test', 'foo')], [models.Context('foo')]))
         args = [
             '--job-path', self.job_path,
             '--config-path', self.config_path,
@@ -156,9 +156,9 @@ class CliTest(TestCase):
     def test_mist_cli_dev_deploy(self):
         mist_app = app.MistApp()
         mist_app.parse_config = MagicMock(
-            return_value=([models.Endpoint('test', 'Test', 'foo')], [models.Context('foo')]))
+            return_value=([models.Function('test', 'Test', 'foo')], [models.Context('foo')]))
         mist_app.dev_deploy = MagicMock(
-            return_value=([models.Endpoint('test', 'Test', 'foo')], [models.Context('foo')]))
+            return_value=([models.Function('test', 'Test', 'foo')], [models.Context('foo')]))
         args = [
             '--job-path', self.job_path,
             '--config-path', self.config_path,
@@ -178,9 +178,9 @@ class CliTest(TestCase):
     def test_mist_cli_dev_deploy_wrong_args(self):
         mist_app = app.MistApp()
         mist_app.parse_config = MagicMock(
-            return_value=([models.Endpoint('test', 'Test', 'foo')], [models.Context('foo')]))
+            return_value=([models.Function('test', 'Test', 'foo')], [models.Context('foo')]))
         mist_app.dev_deploy = MagicMock(
-            return_value=([models.Endpoint('test', 'Test', 'foo')], [models.Context('foo')]))
+            return_value=([models.Function('test', 'Test', 'foo')], [models.Context('foo')]))
         wrong_args = [
             '--job-path', '/tmp/not_existent_file.py',
             '--job-version', '0.0.1',
@@ -210,9 +210,9 @@ class CliTest(TestCase):
     def test_mist_cli_dev_deploy_prompt_for_empty_options(self):
         mist_app = app.MistApp()
         mist_app.parse_config = MagicMock(
-            return_value=([models.Endpoint('test', 'Test', 'foo')], [models.Context('foo')]))
+            return_value=([models.Function('test', 'Test', 'foo')], [models.Context('foo')]))
         mist_app.dev_deploy = MagicMock(
-            return_value=([models.Endpoint('test', 'Test', 'foo')], [models.Context('foo')]))
+            return_value=([models.Function('test', 'Test', 'foo')], [models.Context('foo')]))
         res = self.runner.invoke(cli.dev_deploy, args=[
             '--job-path', self.job_path,
             '--config-path', self.config_path
@@ -294,7 +294,7 @@ class CliTest(TestCase):
         mist_app.get_sha1 = MagicMock(return_value=None)
         # app.calculate_sha1 = MagicMock(return_value='TEST_CONTENT')
         mist_app.get_context = MagicMock(return_value=None)
-        mist_app.get_endpoint = MagicMock(return_value=None)
+        mist_app.get_function = MagicMock(return_value=None)
         mist_app.update = MagicMock()
         mist_app.get_endpoint_json = MagicMock(return_value={
             'execute': {

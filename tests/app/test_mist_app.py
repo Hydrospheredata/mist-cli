@@ -91,7 +91,7 @@ class MistAppTest(TestCase):
         mist = MistApp()
         m.register_uri('GET', self.MIST_APP_URL + 'endpoints',
                        text='[{"name": "test", "path": "test-path", "defaultContext": "foo", "className": "Test$"}]')
-        res = mist.endpoints()
+        res = mist.functions()
         self.assertEqual(len(res), 1)
         item = res[0]
         self.assertEqual(item.name, 'test')
@@ -161,15 +161,15 @@ class MistAppTest(TestCase):
 
     def test_dev_deploy(self, m):
         test_context = models.Context('foo')
-        test_endpoint = models.Endpoint('test', 'Test', test_context)
+        test_endpoint = models.Function('test', 'Test', test_context)
         inst = MistApp()
         inst.job_path = 'test-path.py'
-        inst.update_endpoint = MagicMock(return_value=test_endpoint)
+        inst.update_function = MagicMock(return_value=test_endpoint)
         inst.update_context = MagicMock(return_value=test_context)
         inst.upload_job = MagicMock(return_value='test-path_0_0_1.py')
         inst.dev_deploy([test_endpoint], [test_context], 'baz', '0.0.1')
 
-        endpoint_args = inst.update_endpoint.call_args
+        endpoint_args = inst.update_function.call_args
         context_args = inst.update_context.call_args
         endpoint = endpoint_args[0][0]
         context = context_args[0][0]
@@ -182,15 +182,15 @@ class MistAppTest(TestCase):
 
     def test_deploy(self, m):
         test_context = models.Context('foo')
-        test_endpoint = models.Endpoint('test', 'Test', test_context, 'test-path.py')
+        test_endpoint = models.Function('test', 'Test', test_context, 'test-path.py')
         inst = MistApp()
         inst.job_path = 'test-path.py'
-        inst.update_endpoint = MagicMock(return_value=test_endpoint)
+        inst.update_function = MagicMock(return_value=test_endpoint)
         inst.update_context = MagicMock(return_value=test_context)
         inst.upload_job = MagicMock(return_value='test-path_0_0_1.py')
         inst.deploy([test_endpoint], [test_context], '0.0.1')
 
-        endpoint_args = inst.update_endpoint.call_args
+        endpoint_args = inst.update_function.call_args
         context_args = inst.update_context.call_args
         endpoint = endpoint_args[0][0]
         context = context_args[0][0]
@@ -203,20 +203,20 @@ class MistAppTest(TestCase):
 
     def test_deploy_with_undeployed_contexts(self, m):
         test_context = models.Context('foo')
-        test_endpoint = models.Endpoint('test', 'Test', test_context, 'test-path.py')
+        test_endpoint = models.Function('test', 'Test', test_context, 'test-path.py')
         inst = MistApp()
         inst.job_path = 'test-path.py'
-        inst.update_endpoint = MagicMock(return_value=test_endpoint)
+        inst.update_function = MagicMock(return_value=test_endpoint)
         inst.update_context = MagicMock(side_effect=HTTPError('failed to deploy context'))
         inst.upload_job = MagicMock(return_value='test-path_0_0_1.py')
         self.assertRaises(DeployFailedException, lambda: inst.deploy([test_endpoint], [test_context], '0.0.1'))
         self.assertTrue(inst.update_context.called)
-        self.assertFalse(inst.update_endpoint.called)
+        self.assertFalse(inst.update_function.called)
         inst.upload_job.assert_called_with('test-path_0_0_1.py')
 
     def test_parse_config(self, m):
         mist = MistApp()
-        mist.endpoint_parser.parse = MagicMock(return_value=models.Endpoint('test'))
+        mist.function_parser.parse = MagicMock(return_value=models.Function('test'))
         mist.context_parser.parse = MagicMock(return_value=models.Context('context'))
         endpoints, contexts = mist.parse_config(self.test_config_path)
         self.assertEqual(len(endpoints), 1)
@@ -224,7 +224,7 @@ class MistAppTest(TestCase):
 
     def test_parse_with_errors(self, m):
         mist = MistApp()
-        mist.endpoint_parser.parse = MagicMock(side_effect=ConfigException('failed'))
+        mist.function_parser.parse = MagicMock(side_effect=ConfigException('failed'))
         mist.context_parser.parse = MagicMock(side_effect=ConfigException('failed'))
         try:
             mist.parse_config(self.test_config_path)
@@ -246,10 +246,10 @@ class MistAppTest(TestCase):
             "defaultContext": "foo" 
         }
         """)
-        endpoint = models.Endpoint('test-endpoint', 'Test', 'foo', 'test-path.py')
+        endpoint = models.Function('test-endpoint', 'Test', 'foo', 'test-path.py')
         mist = MistApp()
-        res = mist.update_endpoint(endpoint)
-        self.assertIsInstance(res, models.Endpoint)
+        res = mist.update_function(endpoint)
+        self.assertIsInstance(res, models.Function)
         self.assertEqual(res.name, 'test-endpoint')
         self.assertEqual(res.class_name, 'Test')
         self.assertEqual(res.path, 'test-path.py')
@@ -288,8 +288,8 @@ class MistAppTest(TestCase):
         """)
 
         mist = MistApp()
-        res = mist.get_endpoint('simple')
-        self.assertIsInstance(res, models.Endpoint)
+        res = mist.get_function('simple')
+        self.assertIsInstance(res, models.Function)
         self.assertEqual(res.name, 'simple')
         self.assertEqual(res.class_name, 'Test')
         self.assertEqual(res.path, 'test-path.py')
@@ -382,18 +382,18 @@ class MistAppTest(TestCase):
         mist = MistApp()
         artifact = models.Artifact('test-artifact.py', 'test-artifact.py')
         context = models.Context('test-context')
-        endpoint = models.Endpoint('test-endpoint', 'Test', 'test-context', 'test-path.py')
+        endpoint = models.Function('test-endpoint', 'Test', 'test-context', 'test-path.py')
         mist.artifact_parser.parse = MagicMock(return_value=artifact)
         mist.context_parser.parse = MagicMock(return_value=context)
-        mist.endpoint_parser.parse = MagicMock(return_value=endpoint)
+        mist.function_parser.parse = MagicMock(return_value=endpoint)
         mist._MistApp__upload_artifact = MagicMock(return_value=artifact)
         mist.update_context = MagicMock(return_value=context)
-        mist.update_endpoint = MagicMock(return_value=endpoint)
+        mist.update_function = MagicMock(return_value=endpoint)
         mist.update(models.Deployment('test-artifact.py', 'Artifact', ConfigTree()))
         mist.update(models.Deployment('test-context', 'Context', ConfigTree()))
-        mist.update(models.Deployment('test-endpoint', 'Endpoint', ConfigTree(), '0.0.1'))
+        mist.update(models.Deployment('test-endpoint', 'Function', ConfigTree(), '0.0.1'))
         call_artifact = mist._MistApp__upload_artifact.call_args[0][0]
-        call_endpoint = mist.update_endpoint.call_args[0][0]
+        call_endpoint = mist.update_function.call_args[0][0]
         call_context = mist.update_context.call_args[0][0]
         self.assertEqual(call_artifact.name, 'test-artifact.py')
         self.assertEqual(call_context.name, 'test-context')

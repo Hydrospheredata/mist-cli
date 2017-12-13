@@ -44,12 +44,12 @@ class NamedConfigParsers(TestCase):
         self.assertEqual(w_default_ctx.precreated, False)
 
     def test_endpoint_parser(self):
-        parser = app.EndpointParser()
+        parser = app.FunctionParser()
         endpoint = parser.parse('foo', ConfigFactory.parse_string("""
             class-name = "SimpleContext"
             context = "test-context-2"
         """))
-        self.assertIsInstance(endpoint, models.Endpoint)
+        self.assertIsInstance(endpoint, models.Function)
         self.assertEqual(endpoint.name, 'foo')
         self.assertEqual(endpoint.default_context.name, 'test-context-2')
         self.assertEqual(endpoint.class_name, 'SimpleContext')
