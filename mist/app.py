@@ -122,6 +122,11 @@ class MistApp(object):
 
     @staticmethod
     def parse_deployment(deployment_conf):
+        try:
+            priority = int(os.path.basename(deployment_conf)[0:2])
+        except ValueError as e:
+            priority = 1000
+
         cfg = ConfigFactory.parse_file(deployment_conf)
         model_type = cfg['model']
         name = cfg.get_string('name', os.path.basename(os.path.dirname(deployment_conf)))
@@ -129,7 +134,7 @@ class MistApp(object):
         if model_type == 'Artifact':
             version = cfg['version']
 
-        return Deployment(
+        return priority, Deployment(
             name,
             model_type,
             cfg.get_config('data', ConfigTree()),

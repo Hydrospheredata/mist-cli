@@ -358,10 +358,10 @@ def apply(ctx, mist_app, folder, validate):
     """
     mist_app.validate = validate
     glob_expr = os.path.abspath(folder) + '/**/*.conf'
-    deployments = list(map(mist_app.parse_deployment, glob.glob(glob_expr, recursive=True)))
-    click.echo("Proccess {} file entries".format(len(deployments)))
+    deployments = sorted(map(mist_app.parse_deployment, glob.glob(glob_expr, recursive=True)), key=lambda t: t[0])
+    click.echo("Proccess {} file entries".format(deployments))
     try:
-        mist_app.update_deployments(deployments)
+        mist_app.update_deployments(list(map(lambda t: t[1], deployments)))
     except ValueError as e:
         raise click.BadArgumentUsage(str(e), ctx)
     except Exception as ex:
