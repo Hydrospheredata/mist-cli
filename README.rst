@@ -28,6 +28,7 @@ Instantly run script every time when bash starts that is generate content of `mi
 Or you can just add `mist-cli-complete.sh` somewhere in the system and execute it when it needed.
 
 Also you can generate that script by yourself:
+
 .. code-block:: bash
 
     _MIST_CLI_COMPLETE=source mist-cli > mist-cli-complete.sh
@@ -36,6 +37,7 @@ Also you can generate that script by yourself:
 Usage
 ------
 You can deploy configuration in several ways:
+
 #. mist-cli deploy
 #. mist-cli apply
 #. mist-cli deploy-dev
@@ -52,6 +54,7 @@ Resulting filename should be `10test-stage.conf`.
 You can define as many stages as you want, but most common usage will be define 3 stage for particular job
 (look for example setup for [simple-context job](example/simple-context)).
 There some rules of applying deployment of you configuration that should be mind:
+
 #. Artifact of one version with different content (different sha1) could not be deployed to mist
 #. Endpoint should contain only existing `job link` or `job paths`
 #. Endpoint should contain context that exists either in current deploy stages or exists remotely on mist instance.
