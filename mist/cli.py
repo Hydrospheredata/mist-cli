@@ -299,12 +299,6 @@ def print_examples(mist_app, deployment):
                        "name}/jobs?force=true"
 
             click.echo(curl_cmd.format(request=request, url=url, name=endpoint_name))
-    elif deployment.model_type == 'Artifact':
-        click.echo('Get artifact file')
-        click.echo('-' * 80)
-        click.echo("curl -H 'Content-Type: application/json' -X POST {url}/artifacts/{name}".format(
-            url=url, name=deployment.get_name()
-        ))
     elif deployment.model_type == 'Context':
         click.echo('Get context info')
         click.echo('-' * 80)
@@ -325,13 +319,17 @@ def print_examples(mist_app, deployment):
               """,
               required=True, type=click.Path(exists=True, file_okay=True))
 @click.option('--validate', type=bool, default=True)
-def apply(ctx, mist_app, path, validate):
+def apply(ctx, mist_app, file, validate):
     mist_app.validate = validate
 
-    if os.path.isfile(path):
-        deployments = [mist_app.parse_deployment(path)]
+    if os.path.isfile(file):
+        deployments = [mist_app.parse_deployment(file)]
     else:
-        glob_expr = os.path.abspath(path) + '/**/*.conf'
+        glob_expr = os.path.abspath(file) + '/**/*.conf'
         deployments = sorted(map(mist_app.parse_deployment, glob.glob(glob_expr, recursive=True)), key=lambda t: t[0])
     click.echo("Proccess {} file entries".format(len(deployments)))
-    mist_app.update_deployments(list(map(lambda t: t[1], deployments)))
+    depls = list(map(lambda t: t[1], deployments))
+    print(depls)
+    mist_app.update_deployments(depls)
+    for d in depls:
+        print_examples(mist_app, d)

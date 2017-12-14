@@ -5,7 +5,8 @@ import sys
 from unittest import TestCase
 
 from click import testing
-from mock import MagicMock
+from mock import MagicMock, call
+from pyhocon import ConfigTree
 
 from mist import cli, app, models
 
@@ -34,6 +35,18 @@ class CliTest(TestCase):
         self.test_apply_invalid_folder1 = dir_path
         make_dirs(os.path.join(dir_path, 'test'), exist_ok=True)
         self.apply_job_path = self.setup_job(dir_path)
+        self.test_endpoint_obj = {
+            'name': 'simple-context',
+            'execute': {
+                'numbers': {'type': 'MList', 'args': [{'type': 'MInt', 'args': []}]},
+                'multiplier': {'type': 'MOption', 'args': [{'type': 'MInt', 'args': []}]}
+            },
+            'path': '/Users/blvp/scala/global/mist/target/mist-0.13.3-1.5.2/mist-examples-spark.jar',
+            'tags': [],
+            'className': 'SimpleContext$',
+            'defaultContext': 'foo',
+            'lang': 'scala'
+        }
 
     def setup_job(self, dir_path):
         job_path = os.path.join(dir_path, 'simple-context')
@@ -50,14 +63,16 @@ class CliTest(TestCase):
                     result = rdd.map(lambda s: s * multiplier).collect()
                     return {"result": result}
             """)
-        with open(os.path.join(job_path, '00artifact.conf'), 'w+') as f:
+        self.test_apply_file_artifact = os.path.abspath(os.path.join(job_path, '00artifact.conf'))
+        with open(self.test_apply_file_artifact, 'w+') as f:
             f.write("""
             name=test-job
             model=Artifact
             version=0.0.1
             data.file-path={path}
             """.format(path=test_job_path))
-        with open(os.path.join(job_path, '10context.conf'), 'w+') as f:
+        self.ctx_file_apply = os.path.abspath(os.path.join(job_path, '10context.conf'))
+        with open(self.ctx_file_apply, 'w+') as f:
             f.write("""
             name=foo
             model=Context
@@ -72,7 +87,8 @@ class CliTest(TestCase):
                 run-options = ""
             }
             """)
-        with open(os.path.join(job_path, '20endpoint.conf'), 'w+') as f:
+        self.fn_apply_file = os.path.abspath(os.path.join(job_path, '20function.conf'))
+        with open(self.fn_apply_file, 'w+') as f:
             f.write("""
             model = Function
             name = test-name 
@@ -175,44 +191,36 @@ class CliTest(TestCase):
 
     def test_mist_cli_apply_not_existing_folder(self):
         mist_app = app.MistApp()
-        res = self.runner.invoke(cli.apply, ('--folder', './test-folder'), obj=mist_app)
+        res = self.runner.invoke(cli.apply, ('--file', './test-folder'), obj=mist_app)
         self.assertEqual(res.exit_code, 2)
 
-    # def test_mist_cli_apply_new_configs_with_validation(self):
-    #     mist_app = app.MistApp()
-    #     mist_app.get_sha1 = MagicMock(return_value=None)
-    #     # app.calculate_sha1 = MagicMock(return_value='TEST_CONTENT')
-    #     mist_app.get_context = MagicMock(return_value=None)
-    #     mist_app.get_function = MagicMock(return_value=None)
-    #     mist_app.update = MagicMock()
-    #     mist_app.get_endpoint_json = MagicMock(return_value={
-    #         'execute': {
-    #             'test-arg': {
-    #                 'args': [
-    #
-    #                 ],
-    #                 'type': 'MInt'
-    #             }
-    #         }
-    #     })
-    #     res = self.runner.invoke(cli.apply, ('--folder', self.apply_job_path), obj=mist_app)
-    #     self.assertEqual(0, res.exit_code)
-    #
-    # def test_mist_cli_apply_new_configs_without_validation(self):
-    #     mist_app = app.MistApp(validate=False)
-    #     mist_app.get_sha1 = MagicMock(return_value=None)
-    #     mist_app.get_context = MagicMock(return_value=None)
-    #     # app.calculate_sha1 = MagicMock(return_value='TEST_CONTENT')
-    #     mist_app.update = MagicMock()
-    #     mist_app.get_endpoint_json = MagicMock(return_value={
-    #         'execute': {
-    #             'test-arg': {
-    #                 'args': [
-    #
-    #                 ],
-    #                 'type': 'MInt'
-    #             }
-    #         }
-    #     })
-    #     res = self.runner.invoke(cli.apply, ('--folder', self.apply_job_path, '--validate', 'false'), obj=mist_app)
-    #     self.assertEqual(0, res.exit_code)
+    def test_mist_cli_apply_file(self):
+        mist_app = app.MistApp()
+        mist_app.get_endpoint_json = MagicMock(return_value=self.test_endpoint_obj)
+        mist_app.parse_deployment = MagicMock(return_value=(
+            0, models.Deployment('test', 'Artifact', ConfigTree({'file-path': 'test-path.jar'}), '0.0.1')))
+        mist_app.update_deployments = MagicMock(return_value=None)
+
+        res = self.runner.invoke(cli.apply, ('--file', self.test_apply_file_artifact), obj=mist_app)
+        self.assertEqual(res.exit_code, 0)
+
+    def test_mist_cli_apply_ordered(self):
+        mist_app = app.MistApp()
+
+        mist_app.get_endpoint_json = MagicMock(return_value=self.test_endpoint_obj)
+        fn_depl = models.Deployment('test-1', 'Function', ConfigTree())
+        ctx_depl = models.Deployment('test-2', 'Context', ConfigTree())
+        artifact_depl = models.Deployment('test-3', 'Artifact', ConfigTree({'file-path': 'test-path.jar'}), '0.0.1')
+        mist_app.parse_deployment = MagicMock(side_effect=[
+            (20, fn_depl),
+            (0, ctx_depl),
+            (10, artifact_depl),
+        ])
+
+        mist_app.update_deployments = MagicMock(return_value=None)
+        res = self.runner.invoke(cli.apply, ('--file', self.apply_job_path), obj=mist_app)
+        mist_app.update_deployments.assert_called_once_with([ctx_depl, artifact_depl, fn_depl])
+        calls = [call(self.fn_apply_file), call(self.ctx_file_apply), call(self.test_apply_file_artifact)]
+        mist_app.parse_deployment.assert_has_calls(calls, any_order=True)
+
+        self.assertEqual(res.exit_code, 0)
