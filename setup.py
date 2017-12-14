@@ -1,10 +1,39 @@
+import os
 from setuptools import setup, find_packages
 
+here = os.path.abspath(os.path.dirname(__file__))
+
+about = {}
+with open(os.path.join(here, 'mist', '__version__.py'), 'r') as f:
+    exec(f.read(), about)
+
+with open('README.rst', 'r') as f:
+    readme = f.read()
+
 setup(
-    name='mist-cli',
-    version='0.0.1',
-    packages=['mist'],
+    name=about['__title__'],
+    version=about['__version__'],
+    description=about['__description__'],
+    long_description=readme,
+    author=about['__author__'],
+    author_email=about['__author_email__'],
+    url=about['__url__'],
+    license=about['__license__'],
+    package_dir={'mist': 'mist'},
     include_package_data=True,
+    zip_safe=False,
+    classifiers=(
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Developers',
+        'Natural Language :: English',
+        'License :: OSI Approved :: Apache Software License',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+    ),
+
+    packages=['mist'],
     install_requires=[
         'Click', 'pyhocon', 'requests', 'texttable'
     ],
