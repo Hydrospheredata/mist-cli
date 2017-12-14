@@ -8,14 +8,14 @@ from pyhocon import ConfigFactory, ConfigTree
 
 from mist.models import Function, Context, Worker, Job, Deployment, Artifact
 
-try:
+try:  # pragma: no cover
     from urllib.parse import quote
 except ImportError:
     from urllib import quote
 
 
 class NamedConfigParser(object):
-    def parse(self, name, cfg):
+    def parse(self, name, cfg):  # pragma: no cover
         pass
 
 
@@ -90,28 +90,17 @@ def calculate_sha1(file_path):
     return sha1sum.hexdigest()
 
 
-def add_suffixes(file_path, *suffixes):
-    filename = os.path.basename(file_path)
-    filename, ext = os.path.splitext(filename)
-    parts = list(map(lambda suffix: suffix.replace('.', '_'), suffixes))
-    return filename + '_' + '_'.join(parts) + ext
-
-
 class MistApp(object):
     def __init__(
             self,
             host='localhost',
             port=2004,
-            job_path=None,
-            config_path=None,
             accept_all=False,
             format_table=False,
             validate=True
     ):
         self.host = host
         self.port = port
-        self.job_path = job_path
-        self.config_path = config_path
         self.accept_all = accept_all
         self.format_table = format_table
         self.function_parser = FunctionParser()
@@ -142,7 +131,7 @@ class MistApp(object):
     def __safe_get_order(deployment_file_path):
         try:
             order = int(os.path.basename(deployment_file_path)[0:2])
-        except ValueError:
+        except ValueError:  # pragma: no cover
             order = 1000
         return order
 
@@ -270,13 +259,6 @@ class MistApp(object):
         if fn is not None:
             return Function.from_json(fn)
         return None
-
-    def __format_job_name(self, version, dev=''):
-        args = []
-        if dev != '':
-            args.append(dev)
-        args.append(version)
-        return add_suffixes(self.job_path, *args)
 
     def get_function_json(self, fn_name):
         url = 'http://{}:{}/v2/api/endpoints/{}'.format(self.host, self.port, quote(fn_name, safe=''))

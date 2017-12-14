@@ -290,5 +290,52 @@ class MistAppTest(TestCase):
         self.assertEqual(call_context.name, 'test-context')
         self.assertEqual(call_fn.name, 'test-fn')
 
+    def test_update_deployments_should_catch_exceptions(self, m):
+        mist = MistApp(validate=False)
 
+        context = models.Context('test-context')
+        fn = models.Function('test-fn', 'Test', 'test-context', 'test-path.py')
+        mist.update_function = MagicMock(return_value=fn)
+        mist.update_context = MagicMock(return_value=context)
+        mist.context_parser.parse = MagicMock(return_value=context)
+        mist.function_parser.parse = MagicMock(return_value=fn)
 
+        depls = [
+            models.Deployment('simple', 'Function', ConfigTree()),
+            models.Deployment('simple-ctx', 'Context', ConfigTree())
+        ]
+
+        mist.update_deployments(depls)
+
+    def test_validate_methods(self, m):
+        m.register_uri('GET', self.MIST_APP_URL + 'artifacts/test-name.jar/sha', text="SOME_CONTENT")
+        m.register_uri('GET', self.MIST_APP_URL + 'artifacts/unknown.jar/sha', status_code=404)
+        m.register_uri('GET', self.MIST_APP_URL + 'contexts/test-ctx', text="""
+        {
+          "name": "simple",
+          "maxJobs": 20,
+          "workerMode": "shared",
+          "precreated": false,
+          "sparkConf": {
+            "spark.executor.memory": "256m",
+            "spark.driver.memory": "512m"
+          },
+          "runOptions": "",
+          "downtime": "Inf",
+          "streamingDuration": "1s"
+        }
+        """)
+        m.register_uri('GET', self.MIST_APP_URL + 'contexts/unknown-ctx', status_code=404)
+        mist = MistApp()
+        with self.assertRaises(ValueError):
+            mist._validate_artifact(models.Artifact('test-name', 'test-name.jar'))
+        mist._validate_artifact(models.Artifact('unknown', 'test-name.jar'))
+        mist._validate_context(models.Context('test'))
+        fn1 = models.Function('test', 'Test', 'test-ctx', path='test-name.jar')
+        mist._validate_function(fn1)
+        fn2 = models.Function('test', 'Test', 'unknown-ctx', path='unknown.jar')
+        with self.assertRaises(ValueError):
+            mist._validate_function(fn2)
+        fn3 = models.Function('test', 'Test', 'test-ctx', path='unknown.jar')
+        with self.assertRaises(ValueError):
+            mist._validate_function(fn3)

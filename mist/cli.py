@@ -78,13 +78,6 @@ def pass_ctx_and_custom_obj_decorator(object_type, ensure=False):
 pass_mist_app = pass_ctx_and_custom_obj_decorator(app.MistApp, ensure=True)
 
 
-def validate_version(ctx, param, value):
-    try:
-        return '.'.join(map(str, map(int, value.split('.'))))
-    except ValueError:
-        raise click.BadParameter('version should be in format x.[y.] or at least one integer')
-
-
 def draw_table(ctx, mist_app, items, header):
     items = list(items)
     table = Texttable()
@@ -127,7 +120,7 @@ def list_items(ctx, mist_app, item_type, *args):
 @click.option('-y', '--yes', is_flag=True, help='Say \'Yes\' to all confirmations')
 @click.option('-f', '--format-table', is_flag=True, help='Format table')
 @pass_mist_app
-def mist_cli(ctx, mist_app, host, port, yes, format_table):
+def mist_cli(ctx, mist_app, host, port, yes, format_table):  # pragma: no cover
     """
     :param format_table:
     :param yes:
@@ -145,7 +138,7 @@ def mist_cli(ctx, mist_app, host, port, yes, format_table):
 
 
 @mist_cli.group('kill')
-def kill():
+def kill():  # pragma: no cover
     pass
 
 
@@ -179,7 +172,7 @@ def kill_job(ctx, mist_app, job_id):
 
 
 @mist_cli.group('list')
-def list_cmd():
+def list_cmd():  # pragma: no cover
     pass
 
 
@@ -212,7 +205,7 @@ def list_contexts(ctx, mist_app):
 
 
 @mist_cli.group('start')
-def start():
+def start():  # pragma: no cover
     pass
 
 
@@ -225,7 +218,7 @@ def start():
 @pass_mist_app
 def start_job(ctx, mist_app, endpoint, request, pretty):
     kw = dict()
-    if pretty:
+    if pretty:  # pragma: no cover
         kw['indent'] = 2
         kw['sort_keys'] = True
 
