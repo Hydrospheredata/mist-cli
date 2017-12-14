@@ -201,7 +201,7 @@ def list_jobs(ctx, mist_app, filter):
 
 @list_cmd.command('functions', help='List all endpoints')
 @pass_mist_app
-def list_endpoints(ctx, mist_app):
+def list_functions(ctx, mist_app):
     list_items(ctx, mist_app, Function)
 
 
@@ -285,7 +285,7 @@ def print_examples(mist_app, deployment):
         click.echo("curl  -H 'Content-Type: application/json' -X GET {url}/endpoints/{name}\n".format(
             url=url, name=endpoint_name
         ))
-        endpoint_json = mist_app.get_endpoint_json(endpoint_name)
+        endpoint_json = mist_app.get_function_json(endpoint_name)
         if endpoint_json is not None:
             click.echo('Start job via mist-cli')
             click.echo('-' * 80)

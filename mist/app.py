@@ -199,9 +199,9 @@ class MistApp(object):
                 job_path = resp.text
                 return Artifact(artifact.name, job_path)
 
-    def update_function(self, endpoint):
+    def update_function(self, fn):
         url = 'http://{}:{}/v2/api/endpoints'.format(self.host, self.port)
-        data = endpoint.to_json()
+        data = fn.to_json()
         with requests.post(url, json=data, params={'force': not self.validate}) as resp:
             resp.raise_for_status()
             return Function.from_json(resp.json())
@@ -266,7 +266,7 @@ class MistApp(object):
             return None
 
     def get_function(self, function_name):
-        fn = self.get_endpoint_json(function_name)
+        fn = self.get_function_json(function_name)
         if fn is not None:
             return Function.from_json(fn)
         return None
@@ -278,7 +278,7 @@ class MistApp(object):
         args.append(version)
         return add_suffixes(self.job_path, *args)
 
-    def get_endpoint_json(self, fn_name):
+    def get_function_json(self, fn_name):
         url = 'http://{}:{}/v2/api/endpoints/{}'.format(self.host, self.port, quote(fn_name, safe=''))
         with requests.get(url) as resp:
             if resp.status_code == 200:

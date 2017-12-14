@@ -35,7 +35,7 @@ class CliTest(TestCase):
         self.test_apply_invalid_folder1 = dir_path
         make_dirs(os.path.join(dir_path, 'test'), exist_ok=True)
         self.apply_job_path = self.setup_job(dir_path)
-        self.test_endpoint_obj = {
+        self.test_function_obj = {
             'name': 'simple-context',
             'execute': {
                 'numbers': {'type': 'MList', 'args': [{'type': 'MInt', 'args': []}]},
@@ -120,7 +120,7 @@ class CliTest(TestCase):
             return self.runner.invoke(cmd, catch_exceptions=True, obj=mist_app)
 
         w_res = invoke_cmd(cli.list_workers)
-        e_res = invoke_cmd(cli.list_endpoints)
+        e_res = invoke_cmd(cli.list_functions)
         j_res = invoke_cmd(cli.list_jobs)
         c_res = invoke_cmd(cli.list_contexts)
 
@@ -142,8 +142,8 @@ class CliTest(TestCase):
         returned_json = json.loads(res.output)
         expected_json = json.loads('{"errors": [], "payload": {"result": [1, 2, 3]}, "success": true}\n')
         self.assertEqual(returned_json, expected_json)
-        endpoint = mist_app.start_job.call_args[0][0]
-        self.assertEqual(endpoint, 'simple')
+        fn = mist_app.start_job.call_args[0][0]
+        self.assertEqual(fn, 'simple')
 
     def test_mist_cli_kill_job_w_manual_accepting(self):
         mist_app = app.MistApp()
@@ -196,7 +196,7 @@ class CliTest(TestCase):
 
     def test_mist_cli_apply_file(self):
         mist_app = app.MistApp()
-        mist_app.get_endpoint_json = MagicMock(return_value=self.test_endpoint_obj)
+        mist_app.get_function_json = MagicMock(return_value=self.test_function_obj)
         mist_app.parse_deployment = MagicMock(return_value=(
             0, models.Deployment('test', 'Artifact', ConfigTree({'file-path': 'test-path.jar'}), '0.0.1')))
         mist_app.update_deployments = MagicMock(return_value=None)
@@ -207,7 +207,7 @@ class CliTest(TestCase):
     def test_mist_cli_apply_ordered(self):
         mist_app = app.MistApp()
 
-        mist_app.get_endpoint_json = MagicMock(return_value=self.test_endpoint_obj)
+        mist_app.get_function_json = MagicMock(return_value=self.test_function_obj)
         fn_depl = models.Deployment('test-1', 'Function', ConfigTree())
         ctx_depl = models.Deployment('test-2', 'Context', ConfigTree())
         artifact_depl = models.Deployment('test-3', 'Artifact', ConfigTree({'file-path': 'test-path.jar'}), '0.0.1')

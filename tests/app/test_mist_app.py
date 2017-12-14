@@ -52,7 +52,7 @@ class MistAppTest(TestCase):
         self.assertEqual(mist.accept_all, False)
         self.assertEqual(mist.format_table, False)
 
-    def test_endpoints(self, m):
+    def test_functions(self, m):
         mist = MistApp()
         m.register_uri('GET', self.MIST_APP_URL + 'endpoints',
                        text='[{"name": "test", "path": "test-path", "defaultContext": "foo", "className": "Test$"}]')
@@ -124,20 +124,20 @@ class MistAppTest(TestCase):
                        text='Cancelled')
         mist.kill_worker('some-id-with-dash')
 
-    def test_deploy_endpoint(self, m):
+    def test_deploy_function(self, m):
         m.register_uri('POST', self.MIST_APP_URL + 'endpoints', text="""
         {
-            "name": "test-endpoint",
+            "name": "test-fn",
             "className": "Test",
             "path": "test-path.py",
             "defaultContext": "foo" 
         }
         """)
-        endpoint = models.Function('test-endpoint', 'Test', 'foo', 'test-path.py')
+        fn = models.Function('test-fn', 'Test', 'foo', 'test-path.py')
         mist = MistApp()
-        res = mist.update_function(endpoint)
+        res = mist.update_function(fn)
         self.assertIsInstance(res, models.Function)
-        self.assertEqual(res.name, 'test-endpoint')
+        self.assertEqual(res.name, 'test-fn')
         self.assertEqual(res.class_name, 'Test')
         self.assertEqual(res.path, 'test-path.py')
         self.assertEqual(res.default_context.name, 'foo')
@@ -164,7 +164,7 @@ class MistAppTest(TestCase):
         res = mist.start_job('simple', '{"numbers": [1,2,3], "multiplier": 4}')
         self.assertEqual(res, json.loads(json_str))
 
-    def test_get_endpoint(self, m):
+    def test_get_fn(self, m):
         m.register_uri('GET', self.MIST_APP_URL + 'endpoints/simple', text="""
         {
             "name": "simple",
@@ -182,7 +182,7 @@ class MistAppTest(TestCase):
         self.assertEqual(res.path, 'test-path.py')
         self.assertEqual(res.default_context.name, 'foo')
 
-    def test_get_full_endpoint(self, m):
+    def test_get_full_fn(self, m):
         m.register_uri('GET', self.MIST_APP_URL + 'endpoints/simple', text="""
             {
               "name": "simple",
@@ -214,7 +214,7 @@ class MistAppTest(TestCase):
             }
         """)
         mist = MistApp()
-        res = mist.get_endpoint_json('simple')
+        res = mist.get_function_json('simple')
         self.assertIsInstance(res, dict)
         self.assertIn('execute', res)
 
@@ -269,23 +269,26 @@ class MistAppTest(TestCase):
         mist = MistApp()
         artifact = models.Artifact('test-artifact.py', 'test-artifact.py')
         context = models.Context('test-context')
-        endpoint = models.Function('test-endpoint', 'Test', 'test-context', 'test-path.py')
+        fn = models.Function('test-fn', 'Test', 'test-context', 'test-path.py')
         mist.artifact_parser.parse = MagicMock(return_value=artifact)
         mist.context_parser.parse = MagicMock(return_value=context)
-        mist.function_parser.parse = MagicMock(return_value=endpoint)
+        mist.function_parser.parse = MagicMock(return_value=fn)
         mist._MistApp__upload_artifact = MagicMock(return_value=artifact)
         mist.update_context = MagicMock(return_value=context)
-        mist.update_function = MagicMock(return_value=endpoint)
+        mist.update_function = MagicMock(return_value=fn)
         mist._validate_artifact = MagicMock(return_value=None)
         mist._validate_function = MagicMock(return_value=None)
         mist._validate_context = MagicMock(return_value=None)
 
         mist.update(models.Deployment('test-artifact.py', 'Artifact', ConfigTree(**{'file-path': 'test-path.py'})))
         mist.update(models.Deployment('test-context', 'Context', ConfigTree()))
-        mist.update(models.Deployment('test-endpoint', 'Function', ConfigTree()))
+        mist.update(models.Deployment('test-fn', 'Function', ConfigTree()))
         call_artifact = mist._MistApp__upload_artifact.call_args[0][0]
-        call_endpoint = mist.update_function.call_args[0][0]
+        call_fn = mist.update_function.call_args[0][0]
         call_context = mist.update_context.call_args[0][0]
         self.assertEqual(call_artifact.name, 'test-artifact.py')
         self.assertEqual(call_context.name, 'test-context')
-        self.assertEqual(call_endpoint.name, 'test-endpoint')
+        self.assertEqual(call_fn.name, 'test-fn')
+
+
+

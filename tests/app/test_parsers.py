@@ -43,17 +43,17 @@ class NamedConfigParsers(TestCase):
         self.assertEqual(w_default_ctx.streaming_duration, '1s')
         self.assertEqual(w_default_ctx.precreated, False)
 
-    def test_endpoint_parser(self):
+    def test_function_parser(self):
         parser = app.FunctionParser()
-        endpoint = parser.parse('foo', ConfigFactory.parse_string("""
+        fn = parser.parse('foo', ConfigFactory.parse_string("""
             class-name = "SimpleContext"
             context = "test-context-2"
         """))
-        self.assertIsInstance(endpoint, models.Function)
-        self.assertEqual(endpoint.name, 'foo')
-        self.assertEqual(endpoint.default_context.name, 'test-context-2')
-        self.assertEqual(endpoint.class_name, 'SimpleContext')
-        default_endpoint = parser.parse('foo', ConfigFactory.parse_string("""
+        self.assertIsInstance(fn, models.Function)
+        self.assertEqual(fn.name, 'foo')
+        self.assertEqual(fn.default_context.name, 'test-context-2')
+        self.assertEqual(fn.class_name, 'SimpleContext')
+        default_fn = parser.parse('foo', ConfigFactory.parse_string("""
             class-name = "SimpleContext"
         """))
-        self.assertEqual(default_endpoint.default_context.name, 'default')
+        self.assertEqual(default_fn.default_context.name, 'default')
