@@ -1,3 +1,4 @@
+===========
  Mist CLI
 ===========
 .. image:: https://codecov.io/gh/Hydrospheredata/mist-cli/branch/master/graph/badge.svg
@@ -12,6 +13,7 @@ CLI interface for mist server for creating and updating endpoint and context con
 Installation
 --------------
 .. code-block:: bash
+
     pip install mist-cli
 
 Autocompletion
@@ -19,6 +21,7 @@ Autocompletion
 Instantly run script every time when bash starts that is generate content of `mist-cli-complete.sh`.
 
 .. code-block:: bash
+
     echo 'eval "$(_MIST_CLI_COMPLETE=source mist-cli)"' >> ~/.bash_profile
 
 
@@ -26,6 +29,7 @@ Or you can just add `mist-cli-complete.sh` somewhere in the system and execute i
 
 Also you can generate that script by yourself:
 .. code-block:: bash
+
     _MIST_CLI_COMPLETE=source mist-cli > mist-cli-complete.sh
 
 
