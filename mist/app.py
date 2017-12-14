@@ -129,9 +129,9 @@ class MistApp(object):
         if model_type == 'Artifact':
             version = cfg['version']
 
-        priority = MistApp.__safe_get_priority(deployment_conf)
+        order = MistApp.__safe_get_order(deployment_conf)
 
-        return priority, Deployment(
+        return order, Deployment(
             name,
             model_type,
             cfg.get_config('data', ConfigTree()),
@@ -139,12 +139,12 @@ class MistApp(object):
         )
 
     @staticmethod
-    def __safe_get_priority(deployment_file_path):
+    def __safe_get_order(deployment_file_path):
         try:
-            priority = int(os.path.basename(deployment_file_path)[0:2])
+            order = int(os.path.basename(deployment_file_path)[0:2])
         except ValueError:
-            priority = 1000
-        return priority
+            order = 1000
+        return order
 
     def __resolve_by_model_type(self, model_type):
         """
