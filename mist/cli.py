@@ -314,25 +314,18 @@ def print_examples(mist_app, deployment):
     click.echo('\n')
 
 
-@mist_cli.command('apply')
+@mist_cli.command('apply', help="""
+    Applying changes in given --file/-f parameter.
+    Creates or updates existing configuration in Mist.
+""")
 @pass_mist_app
-@click.option('-f', '--path',
+@click.option('-f', '--file',
               help="""
-              Folder either containing directories with configuration or 
-              path with configuration of deployment stages
+                File path where configs are stored
               """,
               required=True, type=click.Path(exists=True, file_okay=True))
 @click.option('--validate', type=bool, default=True)
 def apply(ctx, mist_app, path, validate):
-    """
-
-    :param ctx:
-    :type mist_app: mist.app.MistApp
-    :param mist_app:
-    :param path:
-    :param validate:
-    :return:
-    """
     mist_app.validate = validate
 
     if os.path.isfile(path):
