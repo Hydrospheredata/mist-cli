@@ -1,6 +1,4 @@
-import glob
 import json
-import os
 import random
 from functools import update_wrapper
 
@@ -13,6 +11,9 @@ from mist import app
 from mist.models import Worker, Job, Function, Context, Deployment
 
 CONTEXT_SETTINGS = dict(auto_envvar_prefix='MIST')
+
+import fnmatch
+import os
 
 
 class GroupWithGroupSubCommand(click.Group):
@@ -301,6 +302,14 @@ def print_examples(mist_app, deployment):
     click.echo('\n')
 
 
+def easy_glob(root, pattern):
+    matches = []
+    for root, _, filenames in os.walk(root):
+        for filename in fnmatch.filter(filenames, pattern):
+            matches.append(os.path.join(root, filename))
+    return matches
+
+
 @mist_cli.command('apply', help="""
     Applying changes in given --file/-f parameter.
     Creates or updates existing configuration in Mist.
@@ -318,8 +327,10 @@ def apply(ctx, mist_app, file, validate):
     if os.path.isfile(file):
         deployments = [mist_app.parse_deployment(file)]
     else:
-        glob_expr = os.path.abspath(file) + '/**/*.conf'
-        deployments = sorted(map(mist_app.parse_deployment, glob.glob(glob_expr, recursive=True)), key=lambda t: t[0])
+        deployments = sorted(map(
+            mist_app.parse_deployment,
+            easy_glob(os.path.abspath(file), '*.conf')
+        ), key=lambda t: t[0])
     click.echo("Proccess {} file entries".format(len(deployments)))
     depls = list(map(lambda t: t[1], deployments))
     print(depls)
