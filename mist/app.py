@@ -117,7 +117,6 @@ class MistApp(object):
         version = None
         if model_type == 'Artifact':
             version = cfg['version']
-
         order = MistApp.__safe_get_order(deployment_conf)
 
         return order, Deployment(

@@ -222,6 +222,8 @@ class Artifact(NamedConfig):
 
 
 class Deployment(object):
+    model_type_choices = ('Artifact', 'Function', 'Context')
+
     def __init__(self, name, model_type, data, version=None):
         """
         :type name: str
@@ -233,6 +235,9 @@ class Deployment(object):
         :param version:
         """
         self.name = name
+        if model_type not in self.model_type_choices:
+            raise ValueError('Model type should be equal one of {}'.format(self.model_type_choices))
+
         self.model_type = model_type
         self.data = data
         self.version = version
@@ -248,6 +253,16 @@ class Deployment(object):
             name += ext
 
         return name
+
+    def with_user(self, user_name):
+        if len(user_name) is not 0:
+            # ar this point it is a dirty hack where we should change name for internal items.
+            # it should happen for endpoint deployment where both context name and job name should be prefixed too.
+            if self.model_type == 'Function':
+                self.data['path'] = '{}_{}'.format(user_name, self.data['path'])
+                self.data['context'] = '{}_{}'.format(user_name, self.data['context'])
+            self.name = '{}_{}'.format(user_name, self.name)
+        return self
 
     def __str__(self):
         return 'Deployment({}, {}, {}, {})'.format(self.name, self.model_type, self.data, self.version)

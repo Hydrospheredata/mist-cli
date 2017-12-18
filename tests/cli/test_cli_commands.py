@@ -208,7 +208,10 @@ class CliTest(TestCase):
         mist_app = app.MistApp()
 
         mist_app.get_function_json = MagicMock(return_value=self.test_function_obj)
-        fn_depl = models.Deployment('test-1', 'Function', ConfigTree())
+        fn_depl = models.Deployment('test-1', 'Function', ConfigTree({
+            'path': 'test-3.jar',
+            'context': 'test-2'
+        }))
         ctx_depl = models.Deployment('test-2', 'Context', ConfigTree())
         artifact_depl = models.Deployment('test-3', 'Artifact', ConfigTree({'file-path': 'test-path.jar'}), '0.0.1')
         mist_app.parse_deployment = MagicMock(side_effect=[

@@ -315,13 +315,17 @@ def easy_glob(root, pattern):
     Creates or updates existing configuration in Mist.
 """)
 @pass_mist_app
+@click.option('-u', '--user',
+              help='username prefix for deployment entry name',
+              required=False,
+              default=lambda: os.getenv('USER', ''))
 @click.option('-f', '--file',
               help="""
                 File path where configs are stored
               """,
               required=True, type=click.Path(exists=True, file_okay=True))
 @click.option('--validate', type=bool, default=True)
-def apply(ctx, mist_app, file, validate):
+def apply(ctx, mist_app, user, file, validate):
     mist_app.validate = validate
 
     if os.path.isfile(file):
@@ -332,7 +336,7 @@ def apply(ctx, mist_app, file, validate):
             easy_glob(os.path.abspath(file), '*.conf')
         ), key=lambda t: t[0])
     click.echo("Proccess {} file entries".format(len(deployments)))
-    depls = list(map(lambda t: t[1], deployments))
+    depls = list(map(lambda t: t[1].with_user(user), deployments))
     print(depls)
     mist_app.update_deployments(depls)
     for d in depls:
