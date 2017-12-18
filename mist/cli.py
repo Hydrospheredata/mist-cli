@@ -214,16 +214,15 @@ def start():  # pragma: no cover
                help='Start job',
                short_help='start job <endpoint> <json request>')
 @click.argument('endpoint', required=True, nargs=1)
-@click.argument('request', required=False, nargs=1)
+@click.argument('request', required=False, nargs=1, default='{}')
 @click.option('--pretty', is_flag=True)
 @pass_mist_app
 def start_job(ctx, mist_app, endpoint, request, pretty):
+
     if request[0] == '@':
         file_path_with_json = request[1:]
         with open(file_path_with_json, 'r') as f:
             request = json.load(f)
-    else:
-        request = json.loads(request)
 
     kw = dict()
     if pretty:  # pragma: no cover
