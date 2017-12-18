@@ -218,6 +218,13 @@ def start():  # pragma: no cover
 @click.option('--pretty', is_flag=True)
 @pass_mist_app
 def start_job(ctx, mist_app, endpoint, request, pretty):
+    if request[0] == '@':
+        file_path_with_json = request[1:]
+        with open(file_path_with_json, 'r') as f:
+            request = json.load(f)
+    else:
+        request = json.loads(request)
+
     kw = dict()
     if pretty:  # pragma: no cover
         kw['indent'] = 2
@@ -337,7 +344,6 @@ def apply(ctx, mist_app, user, file, validate):
         ), key=lambda t: t[0])
     click.echo("Proccess {} file entries".format(len(deployments)))
     depls = list(map(lambda t: t[1].with_user(user), deployments))
-    print(depls)
     mist_app.update_deployments(depls)
     for d in depls:
         print_examples(mist_app, d)

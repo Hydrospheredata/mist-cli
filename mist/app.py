@@ -232,9 +232,11 @@ class MistApp(object):
         with requests.delete(url) as resp:
             resp.raise_for_status()
 
-    def start_job(self, endpoint, request):
+    def start_job(self, endpoint, req):
+        if isinstance(req, str):
+            req = json.loads(req)
+
         url = 'http://{}:{}/v2/api/endpoints/{}/jobs?force=true'.format(self.host, self.port, quote(endpoint, safe=''))
-        req = json.loads(request)
         with requests.post(url, json=req) as resp:
             resp.raise_for_status()
             return resp.json()
