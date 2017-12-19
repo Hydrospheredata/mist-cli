@@ -35,7 +35,7 @@ setup(
 
     packages=['mist'],
     install_requires=[
-        'Click', 'pyhocon', 'requests', 'texttable'
+        'Click>=6', 'pyhocon', 'requests>=2.8.14', 'texttable'
     ],
     tests_require=[
         'pytest', 'requests-mock', 'mock>=2.0.0'
