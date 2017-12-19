@@ -12,5 +12,4 @@ install:
   - pip install coverage
 # command to run tests
 script:
-  - coverage run --source mist setup.py test
-  - codecov -t b4c9ca2b-f8b1-4cfb-8a04-5bc9a71df22f
+  - python setup.py test
