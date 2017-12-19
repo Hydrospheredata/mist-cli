@@ -4,6 +4,8 @@ from functools import update_wrapper
 
 import click
 import math
+
+import requests
 from click.globals import get_current_context
 from texttable import Texttable
 
@@ -55,6 +57,13 @@ class GroupWithGroupSubCommand(click.Group):
         if rows:
             with formatter.section('Commands'):
                 formatter.write_dl(rows)
+
+    def invoke(self, ctx):
+        try:
+            return super().invoke(ctx)
+        except requests.exceptions.RequestException as e:
+            raise click.UsageError(str(e))
+
 
 
 def pass_ctx_and_custom_obj_decorator(object_type, ensure=False):
