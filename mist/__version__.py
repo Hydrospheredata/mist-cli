@@ -1,4 +1,4 @@
-__version__ = '0.0.1'
+__version__ = '0.0.1'  # pragma: no cover
 __author__ = 'Hydrospheredata'
 __author_email__ = 'info@hydrosphere.io'
 __title__ = 'mist-cli'
