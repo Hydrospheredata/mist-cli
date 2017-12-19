@@ -9,7 +9,6 @@ def snake_to_camel_case(param_name):
     return first + ''.join(word.capitalize() for word in rest)
 
 
-
 class PrettyRow(object):
     __metaclass__ = ABCMeta
     header = []
@@ -44,7 +43,6 @@ class NamedConfig(JsonConfig):
         return self
 
     def with_version(self, version):
-
         if version is None:
             return self
 
@@ -101,11 +99,11 @@ class Context(NamedConfig, PrettyRow):
         )
 
 
-class Endpoint(NamedConfig, PrettyRow):
+class Function(NamedConfig, PrettyRow):
     header = ['ROUTE', 'DEFAULT CONTEXT', 'PATH', 'CLASS NAME']
 
     def __init__(self, name, class_name=None, context=None, path=None):
-        super(Endpoint, self).__init__(name)
+        super(Function, self).__init__(name)
 
         if isinstance(context, str):
             context = Context(context)
@@ -127,7 +125,7 @@ class Endpoint(NamedConfig, PrettyRow):
 
     @staticmethod
     def from_json(data):
-        return Endpoint(
+        return Function(
             data['name'],
             data['className'],
             Context(data.get('defaultContext', 'default')),
@@ -137,7 +135,7 @@ class Endpoint(NamedConfig, PrettyRow):
     @staticmethod
     def to_row(item):
         """
-        :type item: Endpoint
+        :type item: Function
         :param item:
         :return:
         """
@@ -216,8 +214,16 @@ class Artifact(NamedConfig):
         super(Artifact, self).__init__(name)
         self.file_path = file_path
 
+    @property
+    def artifact_key(self):
+        _, ext = os.path.splitext(self.file_path)
+        artifact_filename = self.name + ext
+        return artifact_filename
+
 
 class Deployment(object):
+    model_type_choices = ('Artifact', 'Function', 'Context')
+
     def __init__(self, name, model_type, data, version=None):
         """
         :type name: str
@@ -229,6 +235,9 @@ class Deployment(object):
         :param version:
         """
         self.name = name
+        if model_type not in self.model_type_choices:
+            raise ValueError('Model type should be equal one of {}'.format(self.model_type_choices))
+
         self.model_type = model_type
         self.data = data
         self.version = version
@@ -244,6 +253,16 @@ class Deployment(object):
             name += ext
 
         return name
+
+    def with_user(self, user_name):
+        if len(user_name) is not 0:
+            # ar this point it is a dirty hack where we should change name for internal items.
+            # it should happen for endpoint deployment where both context name and job name should be prefixed too.
+            if self.model_type == 'Function':
+                self.data['path'] = '{}_{}'.format(user_name, self.data['path'])
+                self.data['context'] = '{}_{}'.format(user_name, self.data['context'])
+            self.name = '{}_{}'.format(user_name, self.name)
+        return self
 
     def __str__(self):
         return 'Deployment({}, {}, {}, {})'.format(self.name, self.model_type, self.data, self.version)
