@@ -51,7 +51,7 @@ def currentVersion() {
 }
 
 def changeVersion(version) {
-    sh "sed -i  mist/__version__.py \"s/__version__.*/__version__ = '$version'  # pragma: no cover/\""
+    sh "sed -i  mist/__version__.py -e \"s/__version__.*/__version__ = '$version'  # pragma: no cover/\""
 }
 
 def calculateReleaseVersion(currentVersion) {
