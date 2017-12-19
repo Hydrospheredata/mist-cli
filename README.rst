@@ -34,15 +34,7 @@ Also, you can generate that script by yourself:
     _MIST_CLI_COMPLETE=source mist-cli > mist-cli-complete.sh
 
 
-Usage
-------
-You can deploy configuration in several ways:
-
-#. mist-cli deploy
-#. mist-cli apply
-#. mist-cli deploy-dev
-
-mist-cli apply
+Usage mist-cli apply
 ---------------
 Apply method accepts **-f** or **--file** parameter that should contain file or folder with ***.conf** files that represent your mist configuration (Artifact, Function or Context).
 
