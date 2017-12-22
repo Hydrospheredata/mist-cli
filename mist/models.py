@@ -100,7 +100,7 @@ class Context(NamedConfig, PrettyRow):
 
 
 class Function(NamedConfig, PrettyRow):
-    header = ['ROUTE', 'DEFAULT CONTEXT', 'PATH', 'CLASS NAME']
+    header = ['FUNCTION', 'DEFAULT CONTEXT', 'PATH', 'CLASS NAME']
 
     def __init__(self, name, class_name=None, context=None, path=None):
         super(Function, self).__init__(name)

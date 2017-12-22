@@ -1,10 +1,11 @@
+import fnmatch
 import json
+import math
+import os
 import random
 from functools import update_wrapper
 
 import click
-import math
-
 import requests
 from click.globals import get_current_context
 from texttable import Texttable
@@ -13,9 +14,6 @@ from mist import app
 from mist.models import Worker, Job, Function, Context, Deployment
 
 CONTEXT_SETTINGS = dict(auto_envvar_prefix='MIST')
-
-import fnmatch
-import os
 
 
 class GroupWithGroupSubCommand(click.Group):
@@ -63,7 +61,6 @@ class GroupWithGroupSubCommand(click.Group):
             return super().invoke(ctx)
         except requests.exceptions.RequestException as e:
             raise click.UsageError(str(e))
-
 
 
 def pass_ctx_and_custom_obj_decorator(object_type, ensure=False):
@@ -222,12 +219,11 @@ def start():  # pragma: no cover
 @start.command('job',
                help='Start job',
                short_help='start job <endpoint> <json request>')
-@click.argument('endpoint', required=True, nargs=1)
+@click.argument('function', required=True, nargs=1)
 @click.argument('request', required=False, nargs=1, default='{}')
 @click.option('--pretty', is_flag=True)
 @pass_mist_app
-def start_job(ctx, mist_app, endpoint, request, pretty):
-
+def start_job(ctx, mist_app, function, request, pretty):
     if request[0] == '@':
         file_path_with_json = request[1:]
         with open(file_path_with_json, 'r') as f:
@@ -239,7 +235,7 @@ def start_job(ctx, mist_app, endpoint, request, pretty):
         kw['sort_keys'] = True
 
     click.echo(
-        json.dumps(mist_app.start_job(endpoint, request), **kw)
+        json.dumps(mist_app.start_job(function, request), **kw)
     )
 
 
