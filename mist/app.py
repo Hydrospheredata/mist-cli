@@ -180,80 +180,80 @@ class MistApp(object):
             url = 'http://{}:{}/v2/api/artifacts'.format(self.host, self.port)
             artifact_filename = artifact.artifact_key
             files = {'file': (artifact_filename, fn_file)}
-            with requests.post(url, files=files, params={'force': not self.validate}) as resp:
-                if resp.status_code == 409:
-                    raise FileExistsException(artifact_filename)
-                resp.raise_for_status()
-                job_path = resp.text
-                return Artifact(artifact.name, job_path)
+            resp = requests.post(url, files=files, params={'force': not self.validate})
+            if resp.status_code == 409:
+                raise FileExistsException(artifact_filename)
+            resp.raise_for_status()
+            job_path = resp.text
+            return Artifact(artifact.name, job_path)
 
     def update_function(self, fn):
         url = 'http://{}:{}/v2/api/endpoints'.format(self.host, self.port)
         data = fn.to_json()
-        with requests.post(url, json=data, params={'force': not self.validate}) as resp:
-            resp.raise_for_status()
-            return Function.from_json(resp.json())
+        resp = requests.post(url, json=data, params={'force': not self.validate})
+        resp.raise_for_status()
+        return Function.from_json(resp.json())
 
     def update_context(self, context):
         url = 'http://{}:{}/v2/api/contexts'.format(self.host, self.port)
         data = context.to_json()
-        with requests.post(url, json=data) as resp:
-            resp.raise_for_status()
-            return Context.from_json(resp.json())
+        resp = requests.post(url, json=data)
+        resp.raise_for_status()
+        return Context.from_json(resp.json())
 
     def workers(self):
         url = 'http://{}:{}/v2/api/workers'.format(self.host, self.port)
-        with requests.get(url) as resp:
-            return list(map(Worker.from_json, resp.json()))
+        resp = requests.get(url)
+        return list(map(Worker.from_json, resp.json()))
 
     def functions(self):
         url = 'http://{}:{}/v2/api/endpoints'.format(self.host, self.port)
-        with requests.get(url) as resp:
-            return list(map(Function.from_json, resp.json()))
+        resp = requests.get(url)
+        return list(map(Function.from_json, resp.json()))
 
     def jobs(self, status_filter):
         filters = list(map(lambda s: s.strip(), status_filter.split(',')))
         url = 'http://{}:{}/v2/api/jobs'.format(self.host, self.port)
-        with requests.get(url, params={'status': filters}) as resp:
-            return list(map(Job.from_json, resp.json()))
+        resp = requests.get(url, params={'status': filters})
+        return list(map(Job.from_json, resp.json()))
 
     def contexts(self):
         url = 'http://{}:{}/v2/api/contexts'.format(self.host, self.port)
-        with requests.get(url) as resp:
-            return list(map(Context.from_json, resp.json()))
+        resp = requests.get(url)
+        return list(map(Context.from_json, resp.json()))
 
     def cancel_job(self, job_id):
         url = 'http://{}:{}/v2/api/jobs/{}'.format(self.host, self.port, quote(job_id, safe=''))
-        with requests.delete(url) as resp:
-            resp.raise_for_status()
+        resp = requests.delete(url)
+        resp.raise_for_status()
 
     def kill_worker(self, worker_id):
         url = 'http://{}:{}/v2/api/workers/{}'.format(self.host, self.port, quote(worker_id, safe=''))
-        with requests.delete(url) as resp:
-            resp.raise_for_status()
+        resp = requests.delete(url)
+        resp.raise_for_status()
 
     def start_job(self, function, req):
         if isinstance(req, str):
             req = json.loads(req)
 
         url = 'http://{}:{}/v2/api/endpoints/{}/jobs?force=true'.format(self.host, self.port, quote(function, safe=''))
-        with requests.post(url, json=req) as resp:
-            resp.raise_for_status()
-            return resp.json()
+        resp = requests.post(url, json=req)
+        resp.raise_for_status()
+        return resp.json()
 
     def get_sha1(self, artifact_name):
         url = 'http://{}:{}/v2/api/artifacts/{}/sha'.format(self.host, self.port, quote(artifact_name, safe=''))
-        with requests.get(url) as resp:
-            if resp.status_code == 200:
-                return resp.text
-            return None
+        resp = requests.get(url)
+        if resp.status_code == 200:
+            return resp.text
+        return None
 
     def get_context(self, context_name):
         url = 'http://{}:{}/v2/api/contexts/{}'.format(self.host, self.port, quote(context_name, safe=''))
-        with requests.get(url) as resp:
-            if resp.status_code == 200:
-                return Context.from_json(resp.json())
-            return None
+        resp = requests.get(url)
+        if resp.status_code == 200:
+            return Context.from_json(resp.json())
+        return None
 
     def get_function(self, function_name):
         fn = self.get_function_json(function_name)
@@ -263,10 +263,10 @@ class MistApp(object):
 
     def get_function_json(self, fn_name):
         url = 'http://{}:{}/v2/api/endpoints/{}'.format(self.host, self.port, quote(fn_name, safe=''))
-        with requests.get(url) as resp:
-            if resp.status_code == 200:
-                return resp.json()
-            return None
+        resp = requests.get(url)
+        if resp.status_code == 200:
+            return resp.json()
+        return None
 
     def update_deployments(self, deployments):
         for depl in deployments:
