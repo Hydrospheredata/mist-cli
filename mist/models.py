@@ -143,7 +143,7 @@ class Function(NamedConfig, PrettyRow):
 
 
 class Job(JsonConfig, PrettyRow):
-    header = ['UID', 'START TIME', 'NAMESPACE', 'EXT ID', 'ROUTE', 'SOURCE', 'STATUS']
+    header = ['UID', 'START TIME', 'NAMESPACE', 'EXT ID', 'FUNCTION', 'SOURCE', 'STATUS']
 
     def __init__(self, job_id, endpoint, context, source, status, external_id=None, start_time=None):
         self.job_id = job_id

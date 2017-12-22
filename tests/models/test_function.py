@@ -52,4 +52,4 @@ class FunctionTest(TestCase):
         self.assertListEqual(row, ['test', 'default', 'test-path', 'Test'])
 
     def test_header(self):
-        self.assertListEqual(models.Function.header, ['ROUTE', 'DEFAULT CONTEXT', 'PATH', 'CLASS NAME'])
+        self.assertListEqual(models.Function.header, ['FUNCTION', 'DEFAULT CONTEXT', 'PATH', 'CLASS NAME'])

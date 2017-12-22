@@ -54,4 +54,4 @@ class JobTest(TestCase):
 
     def test_job_header(self):
         self.assertListEqual(models.Job.header,
-                             ['UID', 'START TIME', 'NAMESPACE', 'EXT ID', 'ROUTE', 'SOURCE', 'STATUS'])
+                             ['UID', 'START TIME', 'NAMESPACE', 'EXT ID', 'FUNCTION', 'SOURCE', 'STATUS'])
