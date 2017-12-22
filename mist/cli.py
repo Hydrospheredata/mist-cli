@@ -346,7 +346,7 @@ def apply(ctx, mist_app, user, file, validate):
             mist_app.parse_deployment,
             easy_glob(os.path.abspath(file), '*.conf')
         ), key=lambda t: t[0])
-    click.echo("Proccess {} file entries".format(len(deployments)))
+    click.echo("Process {} file entries".format(len(deployments)))
     depls = list(map(lambda t: t[1].with_user(user), deployments))
     mist_app.update_deployments(depls)
     for d in depls:
