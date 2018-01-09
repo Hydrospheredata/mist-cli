@@ -58,7 +58,7 @@ class GroupWithGroupSubCommand(click.Group):
 
     def invoke(self, ctx):
         try:
-            return super().invoke(ctx)
+            return super(GroupWithGroupSubCommand, self).invoke(ctx)
         except requests.exceptions.RequestException as e:
             raise click.UsageError(str(e))
 
