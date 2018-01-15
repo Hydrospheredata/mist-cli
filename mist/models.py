@@ -260,7 +260,10 @@ class Deployment(object):
             # it should happen for endpoint deployment where both context name and job name should be prefixed too.
             if self.model_type == 'Function':
                 self.data['path'] = '{}_{}'.format(user_name, self.data['path'])
-                self.data['context'] = '{}_{}'.format(user_name, self.data['context'])
+                context_is_not_default = not 'default' == self.data.get('context', 'default')
+                if context_is_not_default:
+                    self.data['context'] = '{}_{}'.format(user_name, self.data['context'])
+
             self.name = '{}_{}'.format(user_name, self.name)
         return self
 
