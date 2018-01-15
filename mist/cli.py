@@ -254,24 +254,25 @@ def generate_request(endpoint_json):
 
 def generate_value(param_type):
     t = param_type['type']
-    args = param_type['args']
+    args = param_type.get('args', [])
+
+    if t == 'MObj':
+        return {k: generate_value(v) for k, v in param_type.get('fields', {}).items()}
+    if t == 'MMap':
+        return {generate_value(args[0]): generate_value(args[1])}
+    if t == 'MList':
+        return [generate_value(args[0])]
+    if t == 'MOption':
+        return generate_value(args[0])
 
     if t == 'MString':
         return 'string'
     if t == 'MAny':
         return {}
-    if t == 'MMap':
-        return {
-            generate_value(args[0]): generate_value(args[1])
-        }
     if t == 'MInt':
         return math.ceil(random.random() * 10)
     if t == 'MDouble':
         return random.random()
-    if t == 'MList':
-        return [generate_value(args[0])]
-    if t == 'MOption':
-        return generate_value(args[0])
 
 
 def print_examples(mist_app, deployment):
