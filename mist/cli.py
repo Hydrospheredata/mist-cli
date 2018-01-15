@@ -59,6 +59,8 @@ class GroupWithGroupSubCommand(click.Group):
     def invoke(self, ctx):
         try:
             return super(GroupWithGroupSubCommand, self).invoke(ctx)
+        except requests.exceptions.HTTPError as e:
+            raise click.UsageError("{}: {}".format(str(e), str(e.response.text)))
         except requests.exceptions.RequestException as e:
             raise click.UsageError(str(e))
 
@@ -233,10 +235,14 @@ def start_job(ctx, mist_app, function, request, pretty):
     if pretty:  # pragma: no cover
         kw['indent'] = 2
         kw['sort_keys'] = True
+    try:
+        job_result = json.dumps(mist_app.start_job(function, request), **kw)
+    except requests.exceptions.HTTPError as e:
+        job_result = e.response.text
+    except Exception as e:
+        job_result = str(e)
 
-    click.echo(
-        json.dumps(mist_app.start_job(function, request), **kw)
-    )
+    click.echo(job_result)
 
 
 def generate_request(endpoint_json):
@@ -349,6 +355,7 @@ def apply(ctx, mist_app, user, file, validate):
         ), key=lambda t: t[0])
     click.echo("Process {} file entries".format(len(deployments)))
     depls = list(map(lambda t: t[1].with_user(user), deployments))
-    mist_app.update_deployments(depls)
-    for d in depls:
-        print_examples(mist_app, d)
+    with_errors = mist_app.update_deployments(depls)
+    if not with_errors:
+        for d in depls:
+            print_examples(mist_app, d)

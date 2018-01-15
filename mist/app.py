@@ -269,12 +269,18 @@ class MistApp(object):
         return None
 
     def update_deployments(self, deployments):
+        with_errors = False
         for depl in deployments:
             try:
                 self.update(depl)
                 click.echo('Success: {} {}'.format(depl.model_type, depl.get_name()))
+            except requests.exceptions.HTTPError as e:
+                with_errors = True
+                click.echo("Error: {}: {}".format(str(e), str(e.response.text)))
             except Exception as e:
+                with_errors = True
                 click.echo('Error: ' + str(e))
+        return with_errors
 
     def _validate_artifact(self, a):
         """
