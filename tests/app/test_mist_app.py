@@ -54,7 +54,7 @@ class MistAppTest(TestCase):
 
     def test_functions(self, m):
         mist = MistApp()
-        m.register_uri('GET', self.MIST_APP_URL + 'endpoints',
+        m.register_uri('GET', self.MIST_APP_URL + 'functions',
                        text='[{"name": "test", "path": "test-path", "defaultContext": "foo", "className": "Test$"}]')
         res = mist.functions()
         self.assertEqual(len(res), 1)
@@ -79,14 +79,14 @@ class MistAppTest(TestCase):
                        text="""[
                             {
                                 "jobId": "test", 
-                                "endpoint": "foo", 
+                                "function": "foo", 
                                 "context": "bar", 
                                 "source": "http", 
                                 "status": "started"
                             },
                             {
                                 "jobId": "test2", 
-                                "endpoint": "foo2", 
+                                "function": "foo2", 
                                 "context": "bar2", 
                                 "source": "http", 
                                 "status": "finished"
@@ -125,7 +125,7 @@ class MistAppTest(TestCase):
         mist.kill_worker('some-id-with-dash')
 
     def test_deploy_function(self, m):
-        m.register_uri('POST', self.MIST_APP_URL + 'endpoints', text="""
+        m.register_uri('POST', self.MIST_APP_URL + 'functions', text="""
         {
             "name": "test-fn",
             "className": "Test",
@@ -158,14 +158,14 @@ class MistAppTest(TestCase):
 
     def test_start_job(self, m):
         json_str = '{"errors": [], "payload": {"result": [1, 2, 3]}, "success": true}'
-        m.register_uri('POST', self.MIST_APP_URL + 'endpoints/simple/jobs',
+        m.register_uri('POST', self.MIST_APP_URL + 'functions/simple/jobs',
                        text=json_str)
         mist = MistApp()
         res = mist.start_job('simple', '{"numbers": [1,2,3], "multiplier": 4}')
         self.assertEqual(res, json.loads(json_str))
 
     def test_get_fn(self, m):
-        m.register_uri('GET', self.MIST_APP_URL + 'endpoints/simple', text="""
+        m.register_uri('GET', self.MIST_APP_URL + 'functions/simple', text="""
         {
             "name": "simple",
             "className": "Test",
@@ -183,7 +183,7 @@ class MistAppTest(TestCase):
         self.assertEqual(res.default_context.name, 'foo')
 
     def test_get_full_fn(self, m):
-        m.register_uri('GET', self.MIST_APP_URL + 'endpoints/simple', text="""
+        m.register_uri('GET', self.MIST_APP_URL + 'functions/simple', text="""
             {
               "name": "simple",
               "execute": {

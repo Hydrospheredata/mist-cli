@@ -145,9 +145,9 @@ class Function(NamedConfig, PrettyRow):
 class Job(JsonConfig, PrettyRow):
     header = ['UID', 'START TIME', 'NAMESPACE', 'EXT ID', 'FUNCTION', 'SOURCE', 'STATUS']
 
-    def __init__(self, job_id, endpoint, context, source, status, external_id=None, start_time=None):
+    def __init__(self, job_id, function_id, context, source, status, external_id=None, start_time=None):
         self.job_id = job_id
-        self.endpoint = endpoint
+        self.function = function_id
         self.context = context
         self.source = source
         self.status = status
@@ -165,7 +165,7 @@ class Job(JsonConfig, PrettyRow):
             str(job.start_time) if job.start_time else '-',
             job.context,
             job.external_id,
-            job.endpoint,
+            job.function,
             job.source,
             job.status
         ]
@@ -173,7 +173,7 @@ class Job(JsonConfig, PrettyRow):
     @staticmethod
     def from_json(data):
         return Job(
-            data['jobId'], data['endpoint'], data['context'],
+            data['jobId'], data['function'], data['context'],
             data['source'], data['status'], data.get('externalId', ''),
             data.get('startTime', None)
         )
@@ -257,7 +257,7 @@ class Deployment(object):
     def with_user(self, user_name):
         if len(user_name) is not 0:
             # ar this point it is a dirty hack where we should change name for internal items.
-            # it should happen for endpoint deployment where both context name and job name should be prefixed too.
+            # it should happen for function deployment where both context name and job name should be prefixed too.
             if self.model_type == 'Function':
                 self.data['path'] = '{}_{}'.format(user_name, self.data['path'])
                 context_is_not_default = not 'default' == self.data.get('context', 'default')

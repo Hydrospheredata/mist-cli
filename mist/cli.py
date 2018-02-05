@@ -114,7 +114,7 @@ def list_items(ctx, mist_app, item_type, *args):
 
 
 @click.group(context_settings=CONTEXT_SETTINGS, help="""
-    Mist CLI interface for deploy endpoints and context config to mist server in production and development modes
+    Mist CLI interface for deploy mist functions and context config to mist server in production and development modes
 """, cls=GroupWithGroupSubCommand)
 @click.option('--host',
               default='localhost',
@@ -201,7 +201,7 @@ def list_jobs(ctx, mist_app, filter):
     list_items(ctx, mist_app, Job, filter)
 
 
-@list_cmd.command('functions', help='List all endpoints')
+@list_cmd.command('functions', help='List all functions')
 @pass_mist_app
 def list_functions(ctx, mist_app):
     list_items(ctx, mist_app, Function)
@@ -220,7 +220,7 @@ def start():  # pragma: no cover
 
 @start.command('job',
                help='Start job',
-               short_help='start job <endpoint> <json request>')
+               short_help='start job <function> <json request>')
 @click.argument('function', required=True, nargs=1)
 @click.argument('request', required=False, nargs=1, default='{}')
 @click.option('--pretty', is_flag=True)
@@ -245,13 +245,13 @@ def start_job(ctx, mist_app, function, request, pretty):
     click.echo(job_result)
 
 
-def generate_request(endpoint_json):
+def generate_request(function_json):
     """
-    :param endpoint_json:
+    :param function_json:
     :return:
     """
     generated_obj = {}
-    execute_instance = endpoint_json.get('execute', dict())
+    execute_instance = function_json.get('execute', dict())
     for key in execute_instance.keys():
         generated_obj[key] = generate_value(execute_instance[key])
 
@@ -291,26 +291,26 @@ def print_examples(mist_app, deployment):
     """
     url = 'http://{}:{}/v2/api'.format(mist_app.host, mist_app.port)
     if deployment.model_type == 'Function':
-        click.echo('Get info of endpoint resource')
+        click.echo('Get info of function resource')
         click.echo('-' * 80)
-        endpoint_name = deployment.get_name()
-        click.echo("curl  -H 'Content-Type: application/json' -X GET {url}/endpoints/{name}\n".format(
-            url=url, name=endpoint_name
+        function_name = deployment.get_name()
+        click.echo("curl  -H 'Content-Type: application/json' -X GET {url}/functions/{name}\n".format(
+            url=url, name=function_name
         ))
-        endpoint_json = mist_app.get_function_json(endpoint_name)
-        if endpoint_json is not None:
+        function_json = mist_app.get_function_json(function_name)
+        if function_json is not None:
             click.echo('Start job via mist-cli')
             click.echo('-' * 80)
-            request = generate_request(endpoint_json)
-            click.echo("mist-cli --host {host} --port {port} start job {endpoint} '{request}'\n".format(
-                endpoint=endpoint_name, request=request, host=mist_app.host, port=mist_app.port))
+            request = generate_request(function_json)
+            click.echo("mist-cli --host {host} --port {port} start job {function} '{request}'\n".format(
+                function=function_name, request=request, host=mist_app.host, port=mist_app.port))
 
             click.echo('Start job via curl')
             click.echo('-' * 80)
-            curl_cmd = "curl --data '{request}' -H 'Content-Type: application/json' -X POST {url}/endpoints/{" \
+            curl_cmd = "curl --data '{request}' -H 'Content-Type: application/json' -X POST {url}/functions/{" \
                        "name}/jobs?force=true"
 
-            click.echo(curl_cmd.format(request=request, url=url, name=endpoint_name))
+            click.echo(curl_cmd.format(request=request, url=url, name=function_name))
     elif deployment.model_type == 'Context':
         click.echo('Get context info')
         click.echo('-' * 80)

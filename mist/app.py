@@ -188,7 +188,7 @@ class MistApp(object):
             return Artifact(artifact.name, job_path)
 
     def update_function(self, fn):
-        url = 'http://{}:{}/v2/api/endpoints'.format(self.host, self.port)
+        url = 'http://{}:{}/v2/api/functions'.format(self.host, self.port)
         data = fn.to_json()
         resp = requests.post(url, json=data, params={'force': not self.validate})
         resp.raise_for_status()
@@ -207,7 +207,7 @@ class MistApp(object):
         return list(map(Worker.from_json, resp.json()))
 
     def functions(self):
-        url = 'http://{}:{}/v2/api/endpoints'.format(self.host, self.port)
+        url = 'http://{}:{}/v2/api/functions'.format(self.host, self.port)
         resp = requests.get(url)
         return list(map(Function.from_json, resp.json()))
 
@@ -236,7 +236,7 @@ class MistApp(object):
         if isinstance(req, str):
             req = json.loads(req)
 
-        url = 'http://{}:{}/v2/api/endpoints/{}/jobs?force=true'.format(self.host, self.port, quote(function, safe=''))
+        url = 'http://{}:{}/v2/api/functions/{}/jobs?force=true'.format(self.host, self.port, quote(function, safe=''))
         resp = requests.post(url, json=req)
         resp.raise_for_status()
         return resp.json()
@@ -262,7 +262,7 @@ class MistApp(object):
         return None
 
     def get_function_json(self, fn_name):
-        url = 'http://{}:{}/v2/api/endpoints/{}'.format(self.host, self.port, quote(fn_name, safe=''))
+        url = 'http://{}:{}/v2/api/functions/{}'.format(self.host, self.port, quote(fn_name, safe=''))
         resp = requests.get(url)
         if resp.status_code == 200:
             return resp.json()
