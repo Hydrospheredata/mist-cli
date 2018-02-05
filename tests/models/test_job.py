@@ -31,7 +31,7 @@ class JobTest(TestCase):
     def test_job_from_json(self):
         job = models.Job.from_json(dict(
             jobId='test-id',
-            endpoint='bar',
+            function='bar',
             context='foo',
             source='http',
             status='finished',
@@ -39,7 +39,7 @@ class JobTest(TestCase):
             startTime=0
         ))
         self.assertEqual(job.job_id, 'test-id')
-        self.assertEqual(job.endpoint, 'bar')
+        self.assertEqual(job.function, 'bar')
         self.assertEqual(job.context, 'foo')
         self.assertEqual(job.status, 'finished')
         self.assertEqual(job.source, 'http')
