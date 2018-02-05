@@ -8,7 +8,7 @@
     :target: https://travis-ci.org/Hydrospheredata/mist-cli
     :alt: travis-ci.org
 
-CLI interface for mist server for creating and updating endpoint and context configuration.
+CLI interface for mist server for creating and updating mist function and context configuration.
 
 Installation
 --------------
