@@ -13,7 +13,7 @@ class DeploymentTest(TestCase):
         d = Deployment('test', 'Artifact', ConfigTree({
             'file-path': 'test-name.py'
         }), '0.0.1')
-        self.assertEqual(d.get_name(), 'test_0_0_1.py')
+        self.assertEqual(d.get_name(), 'test_0.0.1.py')
 
     def test_with_user_name(self):
         d = Deployment('test', 'Function', ConfigTree({

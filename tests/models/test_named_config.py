@@ -20,7 +20,7 @@ class NamedConfigTest(TestCase):
         instance = MockNamedConfig('test')
 
         instance.with_version('0.0.1')
-        self.assertEqual(instance.name, 'test_0_0_1')
+        self.assertEqual(instance.name, 'test_0.0.1')
 
     def test_to_json(self):
         instance = MockNamedConfig('test')

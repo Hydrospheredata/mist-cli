@@ -46,7 +46,6 @@ class NamedConfig(JsonConfig):
         if version is None:
             return self
 
-        version = version.replace('.', '_')
         self.name = '{}_{}'.format(self.name, version)
         return self
 
@@ -246,7 +245,7 @@ class Deployment(object):
         name = self.name
 
         if self.version is not None:
-            name += '_' + self.version.replace('.', '_')
+            name += '_' + self.version
 
         if self.model_type == 'Artifact':
             _, ext = os.path.splitext(self.data['file-path'])
