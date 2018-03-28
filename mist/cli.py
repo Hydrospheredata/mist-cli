@@ -158,7 +158,7 @@ def get_mist_versions(mist_app):
         spark_ver = mist_status.get('sparkVersion', 'UNKNOWN')
         java_version_obj = mist_status.get('javaVersion', None)
         if java_version_obj is not None:
-            java_version = java_version_obj.get('runtimeVersion')
+            java_version = java_version_obj.get('runtimeVersion', 'UNKNOWN')
         else:
             java_version = 'UNKNOWN'
 
