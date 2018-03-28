@@ -390,3 +390,5 @@ def apply(ctx, mist_app, user, file, validate):
     if not with_errors:
         for d in depls:
             print_examples(mist_app, d)
+        ui_link = 'http://{}:{}/ui'.format(mist_app.host, mist_app.port)
+        click.echo('You can view all applied changes at mist-ui: {}'.format(ui_link))
