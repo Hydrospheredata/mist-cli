@@ -115,7 +115,9 @@ def list_items(ctx, mist_app, item_type, *args):
 
 
 @click.group(context_settings=CONTEXT_SETTINGS, help="""
-    Mist CLI interface for deploy mist functions and context config to mist server in production and development modes
+    Mist CLI interface for deploy mist functions and context config to mist server in production and development modes.
+    Mist address can be manually set with MIST_* environment variables or via --host, --port parameters. 
+    By default, host/port values is localhost 2004.
 """, cls=GroupWithGroupSubCommand)
 @click.option('--host',
               default='localhost',
