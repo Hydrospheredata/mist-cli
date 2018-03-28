@@ -313,3 +313,10 @@ class MistApp(object):
         if artifact_sha is None:
             msg = 'Artifact {} should exists remotely'.format(e.path)
             raise ValueError(message_tmpl.format('Function', e.name, msg))
+
+    def get_status(self):
+        url = 'http://{}:{}/v2/api/status'.format(self.host, self.port)
+        resp = requests.get(url)
+        resp.raise_for_status()
+        result = resp.json()
+        return result if result is not None else dict()
