@@ -2,8 +2,11 @@ from unittest import TestCase
 
 import click
 import click.testing as testing
+from mock import MagicMock
 
 from mist import cli
+from mist.app import MistApp
+from mist.cli import get_mist_versions
 
 
 class MockClass(object):
@@ -33,3 +36,41 @@ class MistCliTest(TestCase):
         runner = testing.CliRunner()
         res = runner.invoke(some_test_fn)
         self.assertEqual(res.output.strip(), 'MockClass')
+
+    def test_mist_cli_get_mist_versions(self):
+        mist = MistApp()
+        actual_status = dict(mistVersion="1.2.3", sparkVersion="4.5.6", javaVersion=dict(runtimeVersion="7.8.9"))
+        mist.get_status = MagicMock(return_value=actual_status)
+        t = get_mist_versions(mist)
+
+        self.assertEqual(t[0], "1.2.3")
+        self.assertEqual(t[1], "4.5.6")
+        self.assertEqual(t[2], "7.8.9")
+
+        status_wo_java_version = dict(mistVersion="1.2.3", sparkVersion="4.5.6")
+        mist.get_status = MagicMock(return_value=status_wo_java_version)
+
+        t = get_mist_versions(mist)
+
+        self.assertEqual(t[0], "1.2.3")
+        self.assertEqual(t[1], "4.5.6")
+        self.assertEqual(t[2], "UNKNOWN")
+
+        status_wo_java_version = dict(mistVersion="1.2.3", sparkVersion="4.5.6", javaVersion=dict())
+        mist.get_status = MagicMock(return_value=status_wo_java_version)
+
+        t = get_mist_versions(mist)
+
+        self.assertEqual(t[0], "1.2.3")
+        self.assertEqual(t[1], "4.5.6")
+        self.assertEqual(t[2], "UNKNOWN")
+
+        status_wo_mist_spark_version = dict(javaVersion=dict(runtimeVersion="7.8.9"))
+        mist.get_status = MagicMock(return_value=status_wo_mist_spark_version)
+
+        t = get_mist_versions(mist)
+
+        self.assertEqual(t[0], "UNKNOWN")
+        self.assertEqual(t[1], "UNKNOWN")
+        self.assertEqual(t[2], "7.8.9")
+

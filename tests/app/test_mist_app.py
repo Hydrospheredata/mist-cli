@@ -124,7 +124,35 @@ class MistAppTest(TestCase):
                        text='Cancelled')
         mist.kill_worker('some-id-with-dash')
 
-    def test_deploy_function(self, m):
+    def test_deploy_function_exists(self, m):
+        m.register_uri('PUT', self.MIST_APP_URL + 'functions', text="""
+        {
+            "name": "test-fn",
+            "className": "Test",
+            "path": "test-path.py",
+            "defaultContext": "foo" 
+        }
+        """)
+        # returns something by with addr
+        m.register_uri('GET', self.MIST_APP_URL + 'functions/test-fn', text="""
+        {
+            "name": "test-fn",
+            "className": "Test",
+            "path": "test-path.py",
+            "defaultContext": "foo" 
+        }
+        """)
+
+        fn = models.Function('test-fn', 'Test', 'foo', 'test-path.py')
+        mist = MistApp()
+        res = mist.update_function(fn)
+        self.assertIsInstance(res, models.Function)
+        self.assertEqual(res.name, 'test-fn')
+        self.assertEqual(res.class_name, 'Test')
+        self.assertEqual(res.path, 'test-path.py')
+        self.assertEqual(res.default_context.name, 'foo')
+
+    def test_deploy_function_non_existent(self, m):
         m.register_uri('POST', self.MIST_APP_URL + 'functions', text="""
         {
             "name": "test-fn",
@@ -133,6 +161,8 @@ class MistAppTest(TestCase):
             "defaultContext": "foo" 
         }
         """)
+        # returns something by with addr
+        m.register_uri('GET', self.MIST_APP_URL + 'functions/test-fn', status_code=404)
         fn = models.Function('test-fn', 'Test', 'foo', 'test-path.py')
         mist = MistApp()
         res = mist.update_function(fn)
@@ -339,3 +369,21 @@ class MistAppTest(TestCase):
         fn3 = models.Function('test', 'Test', 'test-ctx', path='unknown.jar')
         with self.assertRaises(ValueError):
             mist._validate_function(fn3)
+
+    def test_get_status_return_smth(self, m):
+        m.register_uri('GET', self.MIST_APP_URL + 'status', text="""
+        {
+          "mistVersion": "1.2.3",
+          "sparkVersion": "1.2.3"
+        }
+        """)
+        mist = MistApp()
+        status = mist.get_status()
+        self.assertIsNotNone(status)
+
+    def test_get_status_return_empty_dict(self, m):
+        m.register_uri('GET', self.MIST_APP_URL + 'status', status_code=404)
+        mist = MistApp()
+        status = mist.get_status()
+        self.assertIsNotNone(status)
+        self.assertEqual(len(status), 0)

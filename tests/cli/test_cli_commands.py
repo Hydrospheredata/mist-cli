@@ -106,9 +106,6 @@ class CliTest(TestCase):
         shutil.rmtree(os.path.join(self.test_apply_invalid_folder1, 'test'))
         shutil.rmtree(self.apply_job_path)
 
-    def test_mist_cli_commands(self):
-        self.assertEqual(len(cli.mist_cli.get_commands_to_format(cli.mist_cli)), 8)
-
     def test_mist_cli_list_subcommands(self):
         mist_app = app.MistApp()
         mist_app.workers = MagicMock(return_value=[models.Worker('test-worker-id', 'localhost:0', 'spark-ui')])

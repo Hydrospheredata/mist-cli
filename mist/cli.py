@@ -10,8 +10,9 @@ import requests
 from click.globals import get_current_context
 from texttable import Texttable
 
-from mist import app
+from mist import app, format_request_error
 from mist.models import Worker, Job, Function, Context, Deployment
+from mist.__version__ import __version__ as cli_version
 
 CONTEXT_SETTINGS = dict(auto_envvar_prefix='MIST')
 
@@ -60,7 +61,8 @@ class GroupWithGroupSubCommand(click.Group):
         try:
             return super(GroupWithGroupSubCommand, self).invoke(ctx)
         except requests.exceptions.HTTPError as e:
-            raise click.UsageError("{}: {}".format(str(e), str(e.response.text)))
+            msg = format_request_error(e)
+            raise click.UsageError(msg)
         except requests.exceptions.RequestException as e:
             raise click.UsageError(str(e))
 
@@ -114,7 +116,9 @@ def list_items(ctx, mist_app, item_type, *args):
 
 
 @click.group(context_settings=CONTEXT_SETTINGS, help="""
-    Mist CLI interface for deploy mist functions and context config to mist server in production and development modes
+    Mist CLI interface for deploy mist functions and context config to mist server in production and development modes.
+    Mist address can be manually set with MIST_* environment variables or via --host, --port parameters. 
+    By default, host/port values is localhost 2004.
 """, cls=GroupWithGroupSubCommand)
 @click.option('--host',
               default='localhost',
@@ -128,6 +132,7 @@ def list_items(ctx, mist_app, item_type, *args):
               required=False)
 @click.option('-y', '--yes', is_flag=True, help='Say \'Yes\' to all confirmations')
 @click.option('-f', '--format-table', is_flag=True, help='Format table')
+@click.version_option(version=cli_version)
 @pass_mist_app
 def mist_cli(ctx, mist_app, host, port, yes, format_table):  # pragma: no cover
     """
@@ -144,6 +149,32 @@ def mist_cli(ctx, mist_app, host, port, yes, format_table):  # pragma: no cover
     mist_app.port = port
     mist_app.accept_all = yes
     mist_app.format_table = format_table
+
+
+def get_mist_versions(mist_app):
+    try:
+        mist_status = mist_app.get_status()
+        mist_ver = mist_status.get('mistVersion', 'UNKNOWN')
+        spark_ver = mist_status.get('sparkVersion', 'UNKNOWN')
+        java_version_obj = mist_status.get('javaVersion', None)
+        if java_version_obj is not None:
+            java_version = java_version_obj.get('runtimeVersion', 'UNKNOWN')
+        else:
+            java_version = 'UNKNOWN'
+
+    except requests.exceptions.RequestException:
+        mist_ver = 'UNKNOWN'
+        spark_ver = 'UNKNOWN'
+        java_version = 'UNKNOWN'
+    return mist_ver, spark_ver, java_version
+
+
+@mist_cli.command('status')
+@pass_mist_app
+def status(ctx, mist_app):
+    mist_ver, spark_ver, java_version = get_mist_versions(mist_app)
+    msg = 'Mist version: {}\nSpark version: {}\nJava version: {}'.format(mist_ver, spark_ver, java_version)
+    click.echo(msg)
 
 
 @mist_cli.group('kill')
@@ -359,3 +390,5 @@ def apply(ctx, mist_app, user, file, validate):
     if not with_errors:
         for d in depls:
             print_examples(mist_app, d)
+        ui_link = 'http://{}:{}/ui'.format(mist_app.host, mist_app.port)
+        click.echo('You can view all applied changes at mist-ui: {}'.format(ui_link))

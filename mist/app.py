@@ -6,6 +6,7 @@ import click
 import requests
 from pyhocon import ConfigFactory, ConfigTree
 
+from . import format_request_error
 from mist.models import Function, Context, Worker, Job, Deployment, Artifact
 
 try:  # pragma: no cover
@@ -190,7 +191,8 @@ class MistApp(object):
     def update_function(self, fn):
         url = 'http://{}:{}/v2/api/functions'.format(self.host, self.port)
         data = fn.to_json()
-        resp = requests.post(url, json=data, params={'force': not self.validate})
+        method = 'post' if self.get_function_json(fn.name) is None else 'put'
+        resp = requests.request(method, url, json=data, params={'force': not self.validate})
         resp.raise_for_status()
         return Function.from_json(resp.json())
 
@@ -276,7 +278,9 @@ class MistApp(object):
                 click.echo('Success: {} {}'.format(depl.model_type, depl.get_name()))
             except requests.exceptions.HTTPError as e:
                 with_errors = True
-                click.echo("Error: {}: {}".format(str(e), str(e.response.text)))
+                msg = format_request_error(e)
+                click.echo(msg)
+
             except Exception as e:
                 with_errors = True
                 click.echo('Error: ' + str(e))
@@ -313,3 +317,10 @@ class MistApp(object):
         if artifact_sha is None:
             msg = 'Artifact {} should exists remotely'.format(e.path)
             raise ValueError(message_tmpl.format('Function', e.name, msg))
+
+    def get_status(self):
+        url = 'http://{}:{}/v2/api/status'.format(self.host, self.port)
+        resp = requests.get(url)
+        if resp.status_code == 200:
+            return resp.json()
+        return dict()
