@@ -10,7 +10,7 @@ import requests
 from click.globals import get_current_context
 from texttable import Texttable
 
-from mist import app
+from mist import app, format_request_error
 from mist.models import Worker, Job, Function, Context, Deployment
 from mist.__version__ import __version__ as cli_version
 
@@ -61,7 +61,8 @@ class GroupWithGroupSubCommand(click.Group):
         try:
             return super(GroupWithGroupSubCommand, self).invoke(ctx)
         except requests.exceptions.HTTPError as e:
-            raise click.UsageError("{}: {}".format(str(e), str(e.response.text)))
+            msg = format_request_error(e)
+            raise click.UsageError(msg)
         except requests.exceptions.RequestException as e:
             raise click.UsageError(str(e))
 

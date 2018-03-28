@@ -6,6 +6,7 @@ import click
 import requests
 from pyhocon import ConfigFactory, ConfigTree
 
+from . import format_request_error
 from mist.models import Function, Context, Worker, Job, Deployment, Artifact
 
 try:  # pragma: no cover
@@ -276,7 +277,9 @@ class MistApp(object):
                 click.echo('Success: {} {}'.format(depl.model_type, depl.get_name()))
             except requests.exceptions.HTTPError as e:
                 with_errors = True
-                click.echo("Error: {}: {}".format(str(e), str(e.response.text)))
+                msg = format_request_error(e)
+                click.echo(msg)
+
             except Exception as e:
                 with_errors = True
                 click.echo('Error: ' + str(e))
