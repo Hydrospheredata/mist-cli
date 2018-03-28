@@ -321,6 +321,6 @@ class MistApp(object):
     def get_status(self):
         url = 'http://{}:{}/v2/api/status'.format(self.host, self.port)
         resp = requests.get(url)
-        resp.raise_for_status()
-        result = resp.json()
-        return result if result is not None else dict()
+        if resp.status_code == 200:
+            return resp.json()
+        return dict()

@@ -369,3 +369,20 @@ class MistAppTest(TestCase):
         fn3 = models.Function('test', 'Test', 'test-ctx', path='unknown.jar')
         with self.assertRaises(ValueError):
             mist._validate_function(fn3)
+
+    def test_get_status_return_smth(self, m):
+        m.register_uri('GET', self.MIST_APP_URL + 'status', text="""
+        {
+          "mistVersion": "1.2.3"
+          "sparkVersion": "1.2.3"
+        }
+        """)
+        mist = MistApp()
+        status = mist.get_status()
+        self.assertIsNotNone(status, 'It should return json object when status code is 200')
+
+    def test_get_status_return_empty_dict(self, m):
+        m.register_uri('GET', self.MIST_APP_URL + 'status', status=404)
+        mist = MistApp()
+        status = mist.get_status()
+        self.assertEqual(status, dict(), 'It should return empty dict')
