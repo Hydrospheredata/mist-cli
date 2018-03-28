@@ -41,7 +41,7 @@ class MistCliTest(TestCase):
         mist = MistApp()
         actual_status = dict(mistVersion="1.2.3", sparkVersion="4.5.6", javaVersion=dict(runtimeVersion="7.8.9"))
         mist.get_status = MagicMock(return_value=actual_status)
-        t = get_mist_versions(actual_status)
+        t = get_mist_versions(mist)
 
         self.assertEqual(t[0], "1.2.3")
         self.assertEqual(t[1], "4.5.6")
