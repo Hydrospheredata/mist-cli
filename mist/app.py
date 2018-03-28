@@ -191,7 +191,8 @@ class MistApp(object):
     def update_function(self, fn):
         url = 'http://{}:{}/v2/api/functions'.format(self.host, self.port)
         data = fn.to_json()
-        resp = requests.post(url, json=data, params={'force': not self.validate})
+        method = 'post' if self.get_function_json(fn.name) is None else 'put'
+        resp = requests.request(method, url, json=data, params={'force': not self.validate})
         resp.raise_for_status()
         return Function.from_json(resp.json())
 
