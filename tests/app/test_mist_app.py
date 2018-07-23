@@ -4,11 +4,11 @@ from unittest import TestCase
 
 import requests_mock
 from mock import MagicMock
-from pyhocon import ConfigTree
+from pyhocon import ConfigTree, ConfigFactory
 
 from mist import models
 from mist.app import MistApp
-
+from mist.app import parse_spark_config
 
 @requests_mock.Mocker()
 class MistAppTest(TestCase):
@@ -387,3 +387,13 @@ class MistAppTest(TestCase):
         status = mist.get_status()
         self.assertIsNotNone(status)
         self.assertEqual(len(status), 0)
+
+    def test_parse_spark_config_removing_quotes(self, m):
+        config = ConfigFactory.parse_string("""
+        "a" = "aaa"
+        "a.b" = "bbb"
+        c.d = "ddd"
+        c.e = "eee"
+        """)
+        result = parse_spark_config(config, '')
+        self.assertEqual(result, dict([('a', 'aaa'), ('a.b', 'bbb'), ('c.d', 'ddd'), ('c.e', 'eee')]))
