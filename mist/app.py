@@ -36,6 +36,19 @@ class FunctionParser(NamedConfigParser):
             cfg.get_string('path', None)
         )
 
+def parse_spark_config(value, key_prefix):
+    if isinstance(value, ConfigTree):
+        res = dict()
+        for k in value.keys():
+            v = value[k]
+            new_key = k if key_prefix == '' else key_prefix + '.' + k
+            res.update(parse_spark_config(v, new_key))
+        return res
+    else:
+        key_prefix = key_prefix.replace('\"', '')
+        return {
+            key_prefix: str(value)
+        }
 
 class ContextParser(NamedConfigParser):
     def parse(self, name, cfg):
@@ -46,20 +59,6 @@ class ContextParser(NamedConfigParser):
         :param cfg:
         :return:
         """
-
-        def parse_spark_config(value, key_prefix):
-            if isinstance(value, ConfigTree):
-                res = dict()
-                for k in value.keys():
-                    v = value[k]
-                    new_key = k if key_prefix == '' else key_prefix + '.' + k
-                    res.update(parse_spark_config(v, new_key))
-                return res
-            else:
-                return {
-                    key_prefix: str(value)
-                }
-
         return Context(
             name, cfg.get_int('max-parallel-jobs', 20), cfg.get_string('downtime', '120s'),
             parse_spark_config(cfg.get_config('spark-conf', ConfigTree()), ''), cfg.get_string('worker-mode', 'shared'),
