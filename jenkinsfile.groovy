@@ -89,7 +89,7 @@ def calculateNextDevVersion(releaseVersion) {
 node("JenkinsOnDemand") {
     def repository = 'mist-cli'
     def organization = 'Hydrospheredata'
-    def gitCredentialId = 'HydroRobot'
+    def gitCredentialId = 'HydroRobot_AccessToken'
 
     stage('Checkout') {
         deleteDir()
