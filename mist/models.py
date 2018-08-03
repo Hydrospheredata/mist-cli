@@ -1,12 +1,29 @@
 import datetime
 import os
+import re
 from abc import ABCMeta, abstractmethod
 
 
-def snake_to_camel_case(param_name):
+def dashed_case_to_camel_case(param_name):
+    pn = param_name.split('-')
+    first, rest = pn[0], pn[1:]
+    return first + ''.join(word.capitalize() for word in rest)
+
+
+def snake_case_to_camel_case(param_name):
     pn = param_name.split('_')
     first, rest = pn[0], pn[1:]
     return first + ''.join(word.capitalize() for word in rest)
+
+
+def camel_case_to_dashed_case(name):
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1-\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1-\2', s1).lower()
+
+
+def split_camel_case(name):
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1 \2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1 \2', s1).lower()
 
 
 class PrettyRow(object):
@@ -24,11 +41,16 @@ class JsonConfig(object):
 
     def to_json(self):
         obj = self.__dict__
-        return dict(zip(map(lambda x: snake_to_camel_case(x), obj.keys()), obj.values()))
+        return dict([(snake_case_to_camel_case(k), v) for k, v in obj.items()])
 
     @staticmethod
     @abstractmethod
     def from_json(data):
+        """
+        :type data: dict
+        :param data:
+        :return:
+        """
         raise NotImplementedError
 
 
@@ -60,42 +82,34 @@ class Context(NamedConfig, PrettyRow):
         :param item:
         :return:
         """
-        return [item.name, item.worker_mode]
+        worker_mode = item.context_config.get('worker-mode', item.context_config.get('workerMode', '-'))
+        return [item.name, worker_mode]
 
-    def __init__(
-            self,
-            name,
-            max_jobs=None,
-            downtime=None,
-            spark_conf=None,
-            worker_mode='shared',
-            run_options='',
-            precreated=False,
-            streaming_duration=None
-    ):
+    def __init__(self, name, context_config=None):
+        """
+        :type name: str
+        :param name:
+        :type context_config: dict
+        :param context_config:
+        """
         super(Context, self).__init__(name)
-        self.max_jobs = max_jobs
-        self.downtime = downtime
-        if spark_conf is None:
-            spark_conf = dict()
-        self.spark_conf = spark_conf
-        self.worker_mode = worker_mode
-        self.run_options = run_options
-        self.precreated = precreated
-        self.streaming_duration = streaming_duration
+        if context_config is None:
+            context_config = dict()
+
+        self.context_config = context_config
 
     @staticmethod
     def from_json(data):
-        return Context(
-            data['name'],
-            data.get('maxJobs', None),
-            data.get('downtime', None),
-            data.get('sparkConf', dict()),
-            data['workerMode'],
-            data.get('runOptions', ''),
-            data.get('precreated', None),
-            data.get('streamingDuration', None)
-        )
+        name = data['name']
+        del data['name']
+        context_config = [(camel_case_to_dashed_case(k), v) for k, v in data.items()]
+        return Context(name, dict(context_config))
+
+    def to_json(self):
+        name = self.name
+        result = dict([(dashed_case_to_camel_case(k), v) for k, v in self.context_config.items()])
+        result['name'] = name
+        return result
 
 
 class Function(NamedConfig, PrettyRow):

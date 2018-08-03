@@ -5,25 +5,40 @@ from mist import models
 
 class ContextTest(TestCase):
     def test_context_create(self):
-        context = models.Context('test', 20, '1s', dict(), 'shared', '', False, '1s')
-
+        context = models.Context('test', {
+            'max-jobs': 20,
+            'downtime': '1s',
+            'spark-conf': dict(),
+            'worker-mode': 'shared',
+            'run-options': '',
+            'precreated': False,
+            'streaming-duration': '1s'
+        })
+        context_config = context.context_config
         self.assertEqual(context.name, 'test')
-        self.assertEqual(context.max_jobs, 20)
-        self.assertEqual(context.downtime, '1s')
-        self.assertEqual(context.spark_conf, dict())
-        self.assertEqual(context.worker_mode, 'shared')
-        self.assertEqual(context.run_options, '')
-        self.assertEqual(context.precreated, False)
-        self.assertEqual(context.streaming_duration, '1s')
+        self.assertEqual(context_config['max-jobs'], 20)
+        self.assertEqual(context_config['downtime'], '1s')
+        self.assertEqual(context_config['spark-conf'], dict())
+        self.assertEqual(context_config['worker-mode'], 'shared')
+        self.assertEqual(context_config['run-options'], '')
+        self.assertEqual(context_config['precreated'], False)
+        self.assertEqual(context_config['streaming-duration'], '1s')
 
         default_values = models.Context('test')
-        self.assertEqual(default_values.spark_conf, dict())
-        self.assertEqual(default_values.precreated, False)
-        self.assertEqual(default_values.worker_mode, 'shared')
-        self.assertEqual(default_values.run_options, '')
+        context_config = default_values.context_config
+        self.assertEqual(context_config, dict())
 
     def test_context_to_json(self):
-        context = models.Context('test', 20, '1s', dict(), 'shared', '', False, '1s')
+        context = models.Context('test', {
+            'max-jobs': 20,
+            'downtime': '1s',
+            'spark-conf': dict(),
+            'worker-mode': 'shared',
+            'run-options': '',
+            'precreated': False,
+            'streaming-duration': '1s'
+        })
+
         res = context.to_json()
         self.assertTrue('name' in res)
         self.assertTrue('maxJobs' in res)
@@ -44,14 +59,23 @@ class ContextTest(TestCase):
             runOptions='',
             workerMode='shared'
         ))
+        context_config = ctx.context_config
         self.assertEqual(ctx.name, 'test')
-        self.assertEqual(ctx.max_jobs, 20)
-        self.assertEqual(ctx.streaming_duration, '1s')
-        self.assertEqual(ctx.run_options, '')
-        self.assertEqual(ctx.worker_mode, 'shared')
+        self.assertEqual(context_config['max-jobs'], 20)
+        self.assertEqual(context_config['streaming-duration'], '1s')
+        self.assertEqual(context_config['run-options'], '')
+        self.assertEqual(context_config['worker-mode'], 'shared')
 
     def test_context_to_row(self):
-        context = models.Context('test', 20, '1s', dict(), 'shared', '', False, '1s')
+        context = models.Context('test', {
+            'max-jobs': 20,
+            'streaming-duration': '1s',
+            'spark-conf': dict(),
+            'downtime': '1s',
+            'run-options': '',
+            'worker-mode': 'shared'
+        })
+
         row = models.Context.to_row(context)
         self.assertListEqual(row, ['test', 'shared'])
 
