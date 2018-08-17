@@ -77,7 +77,7 @@ class Context(NamedConfig, PrettyRow):
         :param item:
         :return:
         """
-        worker_mode = item.context_config.get('worker-mode', item.context_config.get('workerMode', '-'))
+        worker_mode = item.context_config.get('worker-mode', item.context_config.get('workerMode', 'exclusive'))
         return [item.name, worker_mode]
 
     def __init__(self, name, context_config=None):
