@@ -21,11 +21,6 @@ def camel_case_to_dashed_case(name):
     return re.sub('([a-z0-9])([A-Z])', r'\1-\2', s1).lower()
 
 
-def split_camel_case(name):
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1 \2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1 \2', s1).lower()
-
-
 class PrettyRow(object):
     __metaclass__ = ABCMeta
     header = []

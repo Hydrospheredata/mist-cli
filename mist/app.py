@@ -62,14 +62,22 @@ class ContextParser(NamedConfigParser):
         :return:
         """
         # we have to cleanup keys for #16
+        spark_conf = self._extract_spark_conf(cfg)
+        context_config = cfg.as_plain_ordered_dict()
+        context_config['spark-conf'] = spark_conf
+        return Context(name, context_config)
+
+    def _extract_spark_conf(self, cfg):
         if 'spark-conf' in cfg:
             spark_conf_dict = parse_spark_config(cfg.get_config('spark-conf'), '')
             del cfg['spark-conf']
+        elif 'sparkConf' in cfg:
+            spark_conf_dict = parse_spark_config(cfg.get_config('sparkConf'), '')
+            del cfg['sparkConf']
         else:
             spark_conf_dict = dict()
-        context_config = cfg.as_plain_ordered_dict()
-        context_config['spark-conf'] = spark_conf_dict
-        return Context(name, context_config)
+
+        return spark_conf_dict
 
 
 class ArtifactParser(NamedConfigParser):
