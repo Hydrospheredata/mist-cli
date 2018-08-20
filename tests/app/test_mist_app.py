@@ -10,6 +10,7 @@ from mist import models
 from mist.app import MistApp
 from mist.app import parse_spark_config
 
+
 @requests_mock.Mocker()
 class MistAppTest(TestCase):
     MIST_APP_URL = 'http://localhost:2004/v2/api/'
@@ -110,7 +111,7 @@ class MistAppTest(TestCase):
         self.assertEqual(len(res), 1)
         item = res[0]
         self.assertEqual(item.name, 'foo')
-        self.assertEqual(item.worker_mode, 'shared')
+        self.assertEqual(item.context_config['worker-mode'], 'shared')
 
     def test_cancel_job(self, m):
         mist = MistApp()
@@ -179,12 +180,14 @@ class MistAppTest(TestCase):
             "workerMode": "shared"
         }
         """)
-        ctx = models.Context('foo', worker_mode='shared')
+        ctx = models.Context('foo', {
+            'worker-mode': 'shared'
+        })
         mist = MistApp()
         res = mist.update_context(ctx)
         self.assertIsInstance(res, models.Context)
         self.assertEqual(res.name, 'test-ctx')
-        self.assertEqual(res.worker_mode, 'shared')
+        self.assertEqual(res.context_config['worker-mode'], 'shared')
 
     def test_start_job(self, m):
         json_str = '{"errors": [], "payload": {"result": [1, 2, 3]}, "success": true}'

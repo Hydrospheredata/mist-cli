@@ -1,10 +1,14 @@
 # coding=utf-8
 
-from mist.mist_job import MistJob
+from mistpy.decorators import on_spark_context, with_args, arg, list_type
 
-class SimpleContext(MistJob):
 
-    def execute(self, numbers, multiplier = 2):
-        rdd = self.context.parallelize(numbers)
-        result = rdd.map(lambda s: s * multiplier).collect()
-        return {"result": result}
+@with_args(
+    arg('numbers', type_hint=list_type(int)),
+    arg('multiplier', type_hint=float, default=2)
+)
+@on_spark_context
+def my_custom_fn(sc, numbers, multiplier):
+    rdd = sc.parallelize(numbers)
+    result = rdd.map(lambda s: s * multiplier).collect()
+    return {"result": result}

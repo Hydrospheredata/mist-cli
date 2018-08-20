@@ -36,6 +36,7 @@ class FunctionParser(NamedConfigParser):
             cfg.get_string('path', None)
         )
 
+
 def parse_spark_config(value, key_prefix):
     if isinstance(value, ConfigTree):
         res = dict()
@@ -50,6 +51,7 @@ def parse_spark_config(value, key_prefix):
             key_prefix: str(value)
         }
 
+
 class ContextParser(NamedConfigParser):
     def parse(self, name, cfg):
         """
@@ -59,12 +61,23 @@ class ContextParser(NamedConfigParser):
         :param cfg:
         :return:
         """
-        return Context(
-            name, cfg.get_int('max-parallel-jobs', 20), cfg.get_string('downtime', '120s'),
-            parse_spark_config(cfg.get_config('spark-conf', ConfigTree()), ''), cfg.get_string('worker-mode', 'shared'),
-            cfg.get_string('run-options', ''), cfg.get_bool('precreated', False),
-            cfg.get_string('streaming-duration', '1s')
-        )
+        # we have to cleanup keys for #16
+        spark_conf = self._extract_spark_conf(cfg)
+        context_config = cfg.as_plain_ordered_dict()
+        context_config['spark-conf'] = spark_conf
+        return Context(name, context_config)
+
+    def _extract_spark_conf(self, cfg):
+        if 'spark-conf' in cfg:
+            spark_conf_dict = parse_spark_config(cfg.get_config('spark-conf'), '')
+            del cfg['spark-conf']
+        elif 'sparkConf' in cfg:
+            spark_conf_dict = parse_spark_config(cfg.get_config('sparkConf'), '')
+            del cfg['sparkConf']
+        else:
+            spark_conf_dict = dict()
+
+        return spark_conf_dict
 
 
 class ArtifactParser(NamedConfigParser):
